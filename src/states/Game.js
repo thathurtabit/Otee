@@ -5,24 +5,26 @@ export default class extends Phaser.State {
   constructor () {
     super()
     this.player = this.player
-    this.walls = this.walls
-    this.hitWall = this.hitWall
     this.cursors = this.cursors
     this.stars = this.stars
     this.score = 0
     this.scoreText = this.scoreText
     this.tileMap = this.tileMap
     this.mapLayer = this.mapLayer
-    this.direction = 'down'
+    this.direction = null
+    this.gameRules = {
+      gameSpeed: 1,
+      heroSpeed: 180
+    }
+    this.gameOverText = this.gameOverText
   }
 
   init () {}
   preload () {
-    this.load.image('sky', 'assets/images/sky.png')
     this.load.tilemap('map', 'assets/data/phaser-game-tile.csv', null, Phaser.Tilemap.CSV)
     this.load.image('blocks', 'assets/images/tiles.png')
     this.load.image('star', 'assets/images/star.png')
-    this.load.spritesheet('dude', 'assets/images/dude.png', 15, 15)
+    this.load.spritesheet('hero', 'assets/images/player.png', 15, 15)
   }
 
   // Walls
@@ -79,7 +81,7 @@ export default class extends Phaser.State {
   // Player
   playerBuilder () {
     // The player and its settings
-    this.player = this.add.sprite(80, 50, 'dude')
+    this.player = this.add.sprite(80, 50, 'hero')
 
     //  We need to enable physics on the player
     this.physics.arcade.enable(this.player)
@@ -87,15 +89,16 @@ export default class extends Phaser.State {
     this.player.body.collideWorldBounds = true
 
     //  Our two animations, walking left and right.
-    this.player.animations.add('left', [0, 1, 2, 3], 10, true)
-    this.player.animations.add('right', [5, 6, 7, 8], 10, true)
-    this.player.animations.add('up', [0, 1, 2, 3], 10, true)
-    this.player.animations.add('down', [5, 6, 7, 8], 10, true)
+    this.player.animations.add('left', [0, 1, 2, 3, 4], 0, true)
+    this.player.animations.add('right', [4, 3, 2, 1, 0], 0, true)
+    this.player.animations.add('up', [0, 1, 2, 3, 4], 0, true)
+    this.player.animations.add('down', [4, 3, 2, 1, 0], 0, true)
   }
 
   // Movement events
   movementEvents () {
     this.cursors = this.input.keyboard.createCursorKeys()
+
     //  Reset the players velocity (movementEvents)
     this.player.body.velocity.x = 0
     this.player.body.velocity.y = 0
@@ -118,27 +121,30 @@ export default class extends Phaser.State {
   // TODO: Replace with Switch
   movePlayer () {
     if (this.direction === 'left') {
-      this.player.body.velocity.x -= 100
+      this.player.body.velocity.x -= this.gameRules.heroSpeed
       this.player.animations.play('left')
-      console.log('moving left')
     } else if (this.direction === 'right') {
-      this.player.body.velocity.x += 100
+      this.player.body.velocity.x += this.gameRules.heroSpeed
       this.player.animations.play('right')
-      console.log('moving right')
     } else if (this.direction === 'up') {
-      this.player.body.velocity.y -= 100
+      this.player.body.velocity.y -= this.gameRules.heroSpeed
       this.player.animations.play('up')
-      console.log('moving up')
     } else if (this.direction === 'down') {
-      this.player.body.velocity.y += 100
+      this.player.body.velocity.y += this.gameRules.heroSpeed
       this.player.animations.play('down')
-      console.log('moving down')
+    }
+  }
+
+  // Constantly move the camera
+  moveCamera () {
+    // As long as the game is running...
+    if (this.direction !== null) {
+      this.camera.y += this.gameRules.gameSpeed
     }
   }
 
   handleGameOver () {
     this.direction = null
-    this.scoreText.text = `GAME OVER`
   }
 
   // CREATE THE THINGS
@@ -146,19 +152,22 @@ export default class extends Phaser.State {
     //  We're going to be using physics, so enable the Arcade Physics system
     this.physics.startSystem(Phaser.Physics.ARCADE)
 
-    //  A simple backblock for our game
-    this.add.sprite(0, 0, 'sky')
 
     this.wallBuilder()
     this.playerBuilder()
     this.starGroup()
 
-    this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '18px', fill: '#fff' })
+    this.scoreText = this.add.text(10, 10, 'Score: 0', { fontSize: '18px', fill: '#fff' })
+    this.gameOverText = this.add.text(this.world.centerX, this.world.centerY, 'RUNNING', { fontSize: '16px', fill: '#FFF' })
+    this.scoreText.fixedToCamera = true
   }
 
   update () {
+    this.moveCamera()
     // Collide the player and the stars with the walls
-    this.hitWall = this.physics.arcade.collide(this.player, this.mapLayer, this.handleGameOver, null, this)
+    this.physics.arcade.collide(this.player, this.mapLayer, this.handleGameOver, null, this)
+    // When the player hits the edge of the screen
+    this.player.events.onOutOfBounds.add(this.handleGameOver, this)
     // Stars colliding with walls
     this.physics.arcade.collide(this.stars, this.mapLayer)
     // This for keyboard events
@@ -166,10 +175,14 @@ export default class extends Phaser.State {
     // This for keyboard events
     this.movementEvents()
     this.movePlayer()
+
+    
   }
 
   render () {
     if (__DEV__) {
+      //this.game.debug.cameraInfo(this.camera, 32, 32)
+      //this.game.debug.spriteCoords(this.player, 32, 500)
     }
   }
 }
