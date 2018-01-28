@@ -15,6 +15,8 @@ export default class extends Phaser.State {
     this.mapLayer = this.mapLayer
     this.direction = 'down'
     this.gameStartText = this.gameStartText
+    this.playerSize = 15
+    this.playerHistory = []
     this.playerStart = {
       x: 177,
       y: 10
@@ -31,7 +33,6 @@ export default class extends Phaser.State {
     this.load.tilemap('map', 'assets/data/phaser-game-tile.csv', null, Phaser.Tilemap.CSV)
     this.load.image('blocks', 'assets/images/tiles.png')
     this.load.image('star', 'assets/images/star.png')
-    this.load.spritesheet('hero', 'assets/images/player.png', 15, 15)
   }
 
   // Walls
@@ -85,10 +86,34 @@ export default class extends Phaser.State {
   //   }
   // }
 
+  // Store Hero History
+  storeHeroHistory(xPos, yPos) {
+    let heroHistory = this.playerHistory;
+    let trailLength = 10
+    let x = xPos + (this.playerSize / 2)
+    let y = yPos + (this.playerSize / 2)
+
+    this.trail = this.add.graphics(0, 0)
+    this.trail.beginFill(0xFFFFFF, 1)
+    this.trail.drawCircle(x, y, 1)
+    
+    // Kill off after this time...
+    this.trail.lifespan = 500
+
+  }
+
   // Player
   playerBuilder () {
+
+    let hero = this.add.graphics(0, 0);
+    hero.beginFill(0xF99D32, 1);
+    hero.drawCircle(this.playerSize, this.playerSize, this.playerSize * 2);
+
     // The player and its settings
-    this.player = this.add.sprite(this.playerStart.x, this.playerStart.y, 'hero')
+    this.player = this.add.sprite(this.playerStart.x, this.playerStart.y)
+    this.player.width = this.playerSize
+    this.player.height = this.playerSize
+    this.player.addChild(hero)
 
     //  We need to enable physics on the player
     this.physics.arcade.enable(this.player)
@@ -99,12 +124,6 @@ export default class extends Phaser.State {
     if (this.player.inCamera === false && this.gameInPlay) {
       this.handleGameOver()
     }
-
-    //  Our two animations, walking left and right.
-    this.player.animations.add('left', [0, 1, 2, 3, 4], 0, true)
-    this.player.animations.add('right', [4, 3, 2, 1, 0], 0, true)
-    this.player.animations.add('up', [0, 1, 2, 3, 4], 0, true)
-    this.player.animations.add('down', [4, 3, 2, 1, 0], 0, true)
   }
 
   // Movement events
@@ -132,19 +151,32 @@ export default class extends Phaser.State {
 
   // TODO: Replace with Switch
   movePlayer () {
+
+    // Get player position on change of direction
+    const getPosAtTurn = () => {
+      // Send current player data to allow trail to be built
+      this.storeHeroHistory(this.player.x, this.player.y)
+    }
+
     if (this.direction === 'left') {
       this.player.body.velocity.x -= this.gameRules.heroSpeed
       this.player.animations.play('left')
+      getPosAtTurn()
     } else if (this.direction === 'right') {
       this.player.body.velocity.x += this.gameRules.heroSpeed
       this.player.animations.play('right')
+      getPosAtTurn()
     } else if (this.direction === 'up') {
       this.player.body.velocity.y -= this.gameRules.heroSpeed
       this.player.animations.play('up')
+      getPosAtTurn()
     } else if (this.direction === 'down') {
       this.player.body.velocity.y += this.gameRules.heroSpeed
       this.player.animations.play('down')
+      getPosAtTurn()
     }
+
+    
   }
 
   // Constantly move the camera
@@ -170,6 +202,9 @@ export default class extends Phaser.State {
     this.physics.arcade.collide(this.player, this.mapLayer, this.handleGameOver, null, this)
     // When the player hits the edge of the screen
     this.player.events.onOutOfBounds.add(this.handleGameOver, this)
+
+    
+
     // // Stars colliding with walls
     // this.physics.arcade.collide(this.stars, this.mapLayer)
     // // This for keyboard events
@@ -179,6 +214,7 @@ export default class extends Phaser.State {
   handleReset () {
     this.restartInfo.kill()
     this.scoreInfo.kill()
+    this.trail.destroy()
     this.score = 0
     this.player.x = this.playerStart.x
     this.player.y = this.playerStart.y
@@ -192,6 +228,9 @@ export default class extends Phaser.State {
     this.direction = null
     this.gameInPlay = false
 
+    //  You can set your own intensity and duration
+    this.camera.shake(0.02, 500);
+
     //  Reset the players velocity (keyboardEvents)
     this.player.body.velocity.x = 0
     this.player.body.velocity.y = 0
@@ -200,11 +239,11 @@ export default class extends Phaser.State {
     let centerY = this.camera.height / 2
 
     // To do, collect all this info in a group?
-    this.scoreInfo = this.add.text(centerX, centerY - 50, `Score: ${this.score} `, { fontSize: '25px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.scoreInfo = this.add.text(centerX, centerY - 50, `Score: ${this.score} `, {  font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.gameOverInfo = this.add.text(centerX, centerY - 12, 'GAME OVER', { fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.gameOverInfo = this.add.text(centerX, centerY - 12, 'GAME OVER', {  font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.restartInfo = this.add.text(centerX, centerY + 20, 'Press ENTER to reset', { fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(centerX, centerY + 20, 'Press ENTER to reset', {  font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Fix to camera position
     this.scoreInfo.fixedToCamera = true
@@ -217,7 +256,7 @@ export default class extends Phaser.State {
   updateScore () {
     this.score = Math.floor(this.player.y - this.playerStart.y)
     this.scoreText.text = `Score: ${this.score}`
-    this.highScoreText.text = `High Score: ${localStorage.highScore || 0}`
+    this.highScoreText.text = `High: ${localStorage.highScore || 0}`
   }
 
   startMenu () {
@@ -225,15 +264,15 @@ export default class extends Phaser.State {
     let centerY = this.camera.height / 2
 
     if (!this.gameInPlay) {
-      this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', {  font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
     }
   }
 
   scoreText () {
-    this.scoreText = this.add.text(10, 10, 'Score: 0', { fontSize: '12px', fill: '#fff', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
+    this.scoreText = this.add.text(10, 10, 'Score: 0', { font: 'Press Start 2P', fontSize: '12px', fill: '#fff', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
     this.scoreText.fixedToCamera = true
-    this.highScoreText = this.add.text(300, 10, `High Score: ${localStorage.highScore || 0}`, { fontSize: '12px', fill: '#fff', align: 'right', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
+    this.highScoreText = this.add.text(250, 10, `High: ${localStorage.highScore || 0}`, {  font: 'Press Start 2P', fontSize: '12px', fill: '#fff', align: 'right', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
     this.highScoreText.fixedToCamera = true
   }
 
@@ -268,6 +307,7 @@ export default class extends Phaser.State {
     this.enterNumpad = this.input.keyboard.addKey(Phaser.Keyboard.NUMPAD_ENTER)
 
     this.updateScore()
+
 
     // If we're not already playing and the spacebar is pressed
     if (!this.gameInPlay && this.spacebar.isDown) {

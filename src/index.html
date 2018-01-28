@@ -15,6 +15,27 @@
             background: #6b56fd;
             margin: 0;
             padding: 0;
+            font-family: 'Press Start 2P', cursive;
+            color: #fff;
+        }
+        #wrapper {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        h1,
+        h2 {
+            font-size: 12px;
+        }
+        p {
+            font-size: 10px;
+        }
+        .cols {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            flex: 1;
         }
         #game {
             margin: 0 auto;
@@ -24,8 +45,17 @@
 </head>
 
 <body>
-
-    <div id="game"></div>
+    <div id="wrapper">
+        <div class="cols">
+            <h1>Phaser Game Test</h1>
+            <p>Use [←][↑][↓][→] to MOVE</p>
+        </div>
+        <div id="game"></div>
+        <div class="cols">
+            <h2>Phaser Game Test</h2>
+            <p>Use [←][↑][↓][→] to MOVE</p>
+        </div>
+    </div>
     <!-- uncomment the line bellow for cordova feature -->
     <!-- <script type="text/javascript" src="cordova.js"></script> -->
 </body>
