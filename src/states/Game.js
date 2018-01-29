@@ -10,6 +10,7 @@ export default class extends Phaser.State {
     this.score = 0
     //this.highScore = localStorage.highScore || 0
     this.gameInPlay = false
+    this.endGame = false
     this.scoreText = this.scoreText
     this.tileMap = this.tileMap
     this.mapLayer = this.mapLayer
@@ -175,8 +176,6 @@ export default class extends Phaser.State {
       this.player.animations.play('down')
       getPosAtTurn()
     }
-
-    
   }
 
   // Constantly move the camera
@@ -203,8 +202,6 @@ export default class extends Phaser.State {
     // When the player hits the edge of the screen
     this.player.events.onOutOfBounds.add(this.handleGameOver, this)
 
-    
-
     // // Stars colliding with walls
     // this.physics.arcade.collide(this.stars, this.mapLayer)
     // // This for keyboard events
@@ -220,12 +217,14 @@ export default class extends Phaser.State {
     this.player.y = this.playerStart.y
     this.camera.y = 0
     this.direction = 'down'
+    this.endGame = false
 
     this.gameOverInfo.text = 'SPACEBAR to start'
   }
 
   handleGameOver () {
     this.direction = null
+    this.endGame = true
     this.gameInPlay = false
 
     //  You can set your own intensity and duration
@@ -309,8 +308,8 @@ export default class extends Phaser.State {
     this.updateScore()
 
 
-    // If we're not already playing and the spacebar is pressed
-    if (!this.gameInPlay && this.spacebar.isDown) {
+    // If we're not already playing, and not in the game over phase, and the spacebar is pressed...
+    if (!this.gameInPlay && !this.endGame && this.spacebar.isDown) {
       this.gameInPlay = true
     }
 
