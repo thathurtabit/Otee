@@ -8,7 +8,6 @@ export default class extends Phaser.State {
     this.cursors = this.cursors
     this.stars = this.stars
     this.score = 0
-    //this.highScore = localStorage.highScore || 0
     this.gameInPlay = false
     this.endGame = false
     this.scoreText = this.scoreText
@@ -17,15 +16,24 @@ export default class extends Phaser.State {
     this.direction = 'down'
     this.gameStartText = this.gameStartText
     this.playerSize = 15
-    this.playerHistory = []
+    this.playerColor = {
+      current: 0xF99D32,
+      default: 0xF99D32,
+      slow: 0xFF0000,
+      fast: 0xFFFFFF,
+      trail: 0xFFFFFF
+    }
     this.playerStart = {
-      x: 177,
-      y: 10
+      x: 220,
+      y: 20
     }
     this.gameRules = {
       gameSpeed: 1,
-      heroSpeed: 180,
-      rollHeight: 375
+      heroSpeedDefault: 180,
+      heroSpeedFast: 200,
+      heroSpeedSlow: 160,
+      heroSpeedCurrent: 180,
+      triggerCameraHeight: 375
     }
   }
 
@@ -49,6 +57,12 @@ export default class extends Phaser.State {
 
     //  Resize the world
     this.mapLayer.resizeWorld()
+
+    // Colision with slow tile
+    this.tileMap.setTileIndexCallback(1, this.slowDownPlayer, this);
+
+    // Colision with fast tile
+    this.tileMap.setTileIndexCallback(2, this.speedUpPlayer, this);
 
     // Collision
     this.tileMap.setCollisionByExclusion([1])
@@ -87,28 +101,37 @@ export default class extends Phaser.State {
   //   }
   // }
 
+  slowDownPlayer (sprite, tile) {
+    tile.alpha = 0.2
+    this.gameRules.heroSpeedCurrent = 120
+    this.playerColor.current = 0xFF0000
+    this.mapLayer.dirty = true
+  }
+
+  speedUpPlayer (sprite, tile) {
+    tile.alpha = 0.2
+    this.gameRules.heroSpeedCurrent = 220
+    this.playerColor.current = 0xFFFFFF
+    this.mapLayer.dirty = true
+  }
+
   // Store Hero History
-  storeHeroHistory(xPos, yPos) {
-    let heroHistory = this.playerHistory;
-    let trailLength = 10
+  storeHeroHistory (xPos, yPos) {
     let x = xPos + (this.playerSize / 2)
     let y = yPos + (this.playerSize / 2)
 
     this.trail = this.add.graphics(0, 0)
-    this.trail.beginFill(0xFFFFFF, 1)
+    this.trail.beginFill(this.playerColor.trail, 1)
     this.trail.drawCircle(x, y, 1)
-    
     // Kill off after this time...
     this.trail.lifespan = 500
-
   }
 
   // Player
   playerBuilder () {
-
-    let hero = this.add.graphics(0, 0);
-    hero.beginFill(0xF99D32, 1);
-    hero.drawCircle(this.playerSize, this.playerSize, this.playerSize * 2);
+    let hero = this.add.graphics(0, 0)
+    hero.beginFill(this.playerColor.current, 1)
+    hero.drawCircle(this.playerSize, this.playerSize, this.playerSize * 2)
 
     // The player and its settings
     this.player = this.add.sprite(this.playerStart.x, this.playerStart.y)
@@ -152,7 +175,6 @@ export default class extends Phaser.State {
 
   // TODO: Replace with Switch
   movePlayer () {
-
     // Get player position on change of direction
     const getPosAtTurn = () => {
       // Send current player data to allow trail to be built
@@ -160,20 +182,16 @@ export default class extends Phaser.State {
     }
 
     if (this.direction === 'left') {
-      this.player.body.velocity.x -= this.gameRules.heroSpeed
-      this.player.animations.play('left')
+      this.player.body.velocity.x -= this.gameRules.heroSpeedCurrent
       getPosAtTurn()
     } else if (this.direction === 'right') {
-      this.player.body.velocity.x += this.gameRules.heroSpeed
-      this.player.animations.play('right')
+      this.player.body.velocity.x += this.gameRules.heroSpeedCurrent
       getPosAtTurn()
     } else if (this.direction === 'up') {
-      this.player.body.velocity.y -= this.gameRules.heroSpeed
-      this.player.animations.play('up')
+      this.player.body.velocity.y -= this.gameRules.heroSpeedCurrent
       getPosAtTurn()
     } else if (this.direction === 'down') {
-      this.player.body.velocity.y += this.gameRules.heroSpeed
-      this.player.animations.play('down')
+      this.player.body.velocity.y += this.gameRules.heroSpeedCurrent
       getPosAtTurn()
     }
   }
@@ -181,7 +199,7 @@ export default class extends Phaser.State {
   // Constantly move the camera
   moveCamera () {
     // As long as the game is running and the player has reaches a certain position...
-    if (this.gameInPlay && this.player.y >= this.gameRules.rollHeight) {
+    if (this.gameInPlay && this.player.y >= this.gameRules.triggerCameraHeight) {
       this.camera.y += this.gameRules.gameSpeed
     }
   }
@@ -218,6 +236,10 @@ export default class extends Phaser.State {
     this.camera.y = 0
     this.direction = 'down'
     this.endGame = false
+    this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
+    this.playerColor.current = this.playerColor.default
+    this.mapLayer.alpha = 1
+    this.mapLayer.dirty = true
 
     this.gameOverInfo.text = 'SPACEBAR to start'
   }
@@ -228,7 +250,7 @@ export default class extends Phaser.State {
     this.gameInPlay = false
 
     //  You can set your own intensity and duration
-    this.camera.shake(0.02, 500);
+    this.camera.shake(0.02, 500)
 
     //  Reset the players velocity (keyboardEvents)
     this.player.body.velocity.x = 0
@@ -238,11 +260,11 @@ export default class extends Phaser.State {
     let centerY = this.camera.height / 2
 
     // To do, collect all this info in a group?
-    this.scoreInfo = this.add.text(centerX, centerY - 50, `Score: ${this.score} `, {  font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.scoreInfo = this.add.text(centerX, centerY - 50, `Score: ${this.score} `, { font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.gameOverInfo = this.add.text(centerX, centerY - 12, 'GAME OVER', {  font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.gameOverInfo = this.add.text(centerX, centerY - 12, 'GAME OVER', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.restartInfo = this.add.text(centerX, centerY + 20, 'Press ENTER to reset', {  font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(centerX, centerY + 20, 'Press ENTER to reset', { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Fix to camera position
     this.scoreInfo.fixedToCamera = true
@@ -263,7 +285,7 @@ export default class extends Phaser.State {
     let centerY = this.camera.height / 2
 
     if (!this.gameInPlay) {
-      this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', {  font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
     }
   }
@@ -271,7 +293,7 @@ export default class extends Phaser.State {
   scoreText () {
     this.scoreText = this.add.text(10, 10, 'Score: 0', { font: 'Press Start 2P', fontSize: '12px', fill: '#fff', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
     this.scoreText.fixedToCamera = true
-    this.highScoreText = this.add.text(250, 10, `High: ${localStorage.highScore || 0}`, {  font: 'Press Start 2P', fontSize: '12px', fill: '#fff', align: 'right', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
+    this.highScoreText = this.add.text(250, 10, `High: ${localStorage.highScore || 0}`, { font: 'Press Start 2P', fontSize: '12px', fill: '#fff', align: 'right', backgroundColor: 'rgba(0, 0, 0, 0.2)' })
     this.highScoreText.fixedToCamera = true
   }
 
