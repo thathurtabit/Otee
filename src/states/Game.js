@@ -18,7 +18,7 @@ export default class extends Phaser.State {
     this.playerSize = 15
     this.playerColor = {
       current: 0xF99D32,
-      default: 0xF99D32,
+      default: 0xDADDD8,
       slow: 0xFF0000,
       fast: 0xFFFFFF,
       trail: 0xFFFFFF
