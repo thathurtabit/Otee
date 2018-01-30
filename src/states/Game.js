@@ -110,16 +110,21 @@ export default class extends Phaser.State {
 
     // Add the touched tile to an array
     this.touchableTiles.push(tile)
-    console.log(this.touchableTiles)
   }
 
   speedUpPlayer (sprite, tile) {
+
     tile.alpha = 0.2
     this.gameRules.heroSpeedCurrent = 220
     this.playerColor.current = 0xFFFFFF
     this.mapLayer.dirty = true
+    //if (tileTouched === 0) {
+      this.pointInfo = this.add.text(this.player.x, this.player.y - 20, '50 POINTS', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      //tileTouched = true
+    //}
+    this.pointInfo.lifespan = 100
+
     this.touchableTiles.push(tile)
-    console.log(this.touchableTiles)
   }
 
   // Reset touched tiles
