@@ -17,8 +17,8 @@ export default class extends Phaser.State {
     this.gameStartText = this.gameStartText
     this.playerSize = 15
     this.playerColor = {
-      current: 0xFFFFFF,
-      default: 0xFFFFFF,
+      current: 0xff9770,
+      default: 0xff9770,
       slow: 0xFF0000,
       fast: 0xFFFFFF,
       trail: 0xFFFFFF
@@ -59,13 +59,13 @@ export default class extends Phaser.State {
     this.mapLayer.resizeWorld()
 
     // Colision with slow tile
-    this.tileMap.setTileIndexCallback(2, this.slowDownPlayer, this);
+    this.tileMap.setTileIndexCallback(2, this.slowDownPlayer, this)
 
     // Colision with fast tile
-    this.tileMap.setTileIndexCallback(3, this.speedUpPlayer, this);
+    this.tileMap.setTileIndexCallback(3, this.speedUpPlayer, this)
 
     // Collision
-    this.tileMap.setCollisionByExclusion([1])
+    this.tileMap.setCollisionByExclusion([4])
   }
 
   // // Handle overlap between player and object
