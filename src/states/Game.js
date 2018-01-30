@@ -16,6 +16,7 @@ export default class extends Phaser.State {
     this.direction = 'down'
     this.gameStartText = this.gameStartText
     this.playerSize = 15
+    this.touchableTiles = []
     this.playerColor = {
       current: 0xff9770,
       default: 0xff9770,
@@ -106,6 +107,10 @@ export default class extends Phaser.State {
     this.gameRules.heroSpeedCurrent = 120
     this.playerColor.current = 0xFF0000
     this.mapLayer.dirty = true
+
+    // Add the touched tile to an array
+    this.touchableTiles.push(tile)
+    console.log(this.touchableTiles)
   }
 
   speedUpPlayer (sprite, tile) {
@@ -113,6 +118,20 @@ export default class extends Phaser.State {
     this.gameRules.heroSpeedCurrent = 220
     this.playerColor.current = 0xFFFFFF
     this.mapLayer.dirty = true
+    this.touchableTiles.push(tile)
+    console.log(this.touchableTiles)
+  }
+
+  // Reset touched tiles
+  resetTouchableTiles () {
+    // Convert alpha back to 1
+    this.touchableTiles.forEach((touchedTile) => {
+      touchedTile.alpha = 1
+    })
+    // Refresh map
+    this.mapLayer.dirty = true
+    // Clear touched tiles array
+    this.touchableTiles = []
   }
 
   // Store Hero History
@@ -238,8 +257,7 @@ export default class extends Phaser.State {
     this.endGame = false
     this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
     this.playerColor.current = this.playerColor.default
-    this.mapLayer.alpha = 1
-    this.mapLayer.dirty = true
+    this.resetTouchableTiles()
 
     this.gameOverInfo.text = 'SPACEBAR to start'
   }
