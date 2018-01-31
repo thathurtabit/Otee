@@ -103,6 +103,12 @@ export default class extends Phaser.State {
   // }
 
   slowDownPlayer (sprite, tile) {
+    if (tile.alpha === 1) {
+      this.pointInfo = this.add.text(this.player.x, this.player.y, '100 POINTS', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    }
+    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.pointInfo.lifespan = 400
+
     tile.alpha = 0.2
     this.gameRules.heroSpeedCurrent = 120
     this.playerColor.current = 0xFF0000
@@ -113,17 +119,17 @@ export default class extends Phaser.State {
   }
 
   speedUpPlayer (sprite, tile) {
-
+    if (tile.alpha === 1) {
+      this.pointInfo = this.add.text(this.player.x, this.player.y, '50 POINTS', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    }
+    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.pointInfo.lifespan = 400
+    
     tile.alpha = 0.2
     this.gameRules.heroSpeedCurrent = 220
     this.playerColor.current = 0xFFFFFF
     this.mapLayer.dirty = true
-    //if (tileTouched === 0) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y - 20, '50 POINTS', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      //tileTouched = true
-    //}
-    this.pointInfo.lifespan = 100
-
+    // Add tile to array for later reset
     this.touchableTiles.push(tile)
   }
 
@@ -271,6 +277,11 @@ export default class extends Phaser.State {
     this.direction = null
     this.endGame = true
     this.gameInPlay = false
+
+    this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.playerInfo.anchor.setTo(0.5) // set anchor to middle / center
+    // Kill off after this time...
+    this.playerInfo.lifespan = 1000
 
     //  You can set your own intensity and duration
     this.camera.shake(0.02, 500)
