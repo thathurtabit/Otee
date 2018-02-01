@@ -28,13 +28,14 @@ export default class extends Phaser.State {
       x: 220,
       y: 20
     }
+    this.bonusPoints = 0
     this.gameRules = {
       gameSpeed: 1,
       heroSpeedDefault: 180,
       heroSpeedFast: 200,
-      heroSpeedSlow: 160,
+      heroSpeedSlow: 160, 
       heroSpeedCurrent: 180,
-      triggerCameraHeight: 375
+      triggerCameraHeight: 250
     }
   }
 
@@ -42,7 +43,6 @@ export default class extends Phaser.State {
   preload () {
     this.load.tilemap('map', 'assets/data/phaser-game-tile.csv', null, Phaser.Tilemap.CSV)
     this.load.image('blocks', 'assets/images/tiles.png')
-    this.load.image('star', 'assets/images/star.png')
   }
 
   // Walls
@@ -59,16 +59,10 @@ export default class extends Phaser.State {
     //  Resize the world
     this.mapLayer.resizeWorld()
 
-    // Colision with fast tile
+    // See handleTileCollision
     this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
-
-    // Colision with slow tile
     this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
-
-    // Colision with fast tile
     this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
-
-    // Colision with fast tile
     this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
 
     // Collision
@@ -102,17 +96,18 @@ export default class extends Phaser.State {
         break
     }
 
-    // If we haven't hit the tile yet
+    // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
       this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      // Add bonus to total
+      this.bonusPoints += bonusPoints
     }
 
     this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.pointInfo.lifespan = 400
 
-    this.score += bonusPoints // won't work
-
-    tile.alpha = 0.2
+    // Change opacity down
+    tile.alpha = 0.3
     this.gameRules.heroSpeedCurrent = playerSpeed
     this.playerColor.current = 0xFF0000
     this.mapLayer.dirty = true
@@ -199,18 +194,25 @@ export default class extends Phaser.State {
       this.storeHeroHistory(this.player.x, this.player.y)
     }
 
-    if (this.direction === 'left') {
-      this.player.body.velocity.x -= this.gameRules.heroSpeedCurrent
-      getPosAtTurn()
-    } else if (this.direction === 'right') {
-      this.player.body.velocity.x += this.gameRules.heroSpeedCurrent
-      getPosAtTurn()
-    } else if (this.direction === 'up') {
-      this.player.body.velocity.y -= this.gameRules.heroSpeedCurrent
-      getPosAtTurn()
-    } else if (this.direction === 'down') {
-      this.player.body.velocity.y += this.gameRules.heroSpeedCurrent
-      getPosAtTurn()
+    switch (this.direction) {
+      case 'left':
+        this.player.body.velocity.x -= this.gameRules.heroSpeedCurrent
+        getPosAtTurn()
+        break
+      case 'right':
+        this.player.body.velocity.x += this.gameRules.heroSpeedCurrent
+        getPosAtTurn()
+        break
+      case 'up':
+        this.player.body.velocity.y -= this.gameRules.heroSpeedCurrent
+        getPosAtTurn()
+        break
+      case 'down':
+        this.player.body.velocity.y += this.gameRules.heroSpeedCurrent
+        getPosAtTurn()
+        break
+      default:
+        break
     }
   }
 
@@ -238,10 +240,10 @@ export default class extends Phaser.State {
     // When the player hits the edge of the screen
     this.player.events.onOutOfBounds.add(this.handleGameOver, this)
 
-    // // Stars colliding with walls
-    // this.physics.arcade.collide(this.stars, this.mapLayer)
-    // // This for keyboard events
-    // this.physics.arcade.overlap(this.player, this.stars, this.collectStar, null, this)
+    // If player is off screen
+    if (this.player.y <= this.game.camera.y + (this.playerSize / 2)) {
+      this.handleGameOver()
+    }
   }
 
   handleReset () {
@@ -254,6 +256,7 @@ export default class extends Phaser.State {
     this.camera.y = 0
     this.direction = 'down'
     this.endGame = false
+    this.bonusPoints = 0
     this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
     this.playerColor.current = this.playerColor.default
     this.resetTouchableTiles()
@@ -297,7 +300,7 @@ export default class extends Phaser.State {
   }
 
   updateScore () {
-    this.score = Math.floor(this.player.y - this.playerStart.y)
+    this.score = Math.floor(this.player.y - this.playerStart.y) + this.bonusPoints
     this.scoreText.text = `Score: ${this.score}`
     this.highScoreText.text = `High: ${localStorage.highScore || 0}`
   }
@@ -338,8 +341,6 @@ export default class extends Phaser.State {
 
     this.wallBuilder()
     this.playerBuilder()
-
-    //this.starGroup()
     this.scoreText()
     this.startMenu()
   }
@@ -350,7 +351,6 @@ export default class extends Phaser.State {
     this.enterNumpad = this.input.keyboard.addKey(Phaser.Keyboard.NUMPAD_ENTER)
 
     this.updateScore()
-
 
     // If we're not already playing, and not in the game over phase, and the spacebar is pressed...
     if (!this.gameInPlay && !this.endGame && this.spacebar.isDown) {
