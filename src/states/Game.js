@@ -59,77 +59,65 @@ export default class extends Phaser.State {
     //  Resize the world
     this.mapLayer.resizeWorld()
 
+    // Colision with fast tile
+    this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
+
     // Colision with slow tile
-    this.tileMap.setTileIndexCallback(2, this.slowDownPlayer, this)
+    this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
 
     // Colision with fast tile
-    this.tileMap.setTileIndexCallback(3, this.speedUpPlayer, this)
+    this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
+
+    // Colision with fast tile
+    this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
 
     // Collision
-    this.tileMap.setCollisionByExclusion([4])
+    this.tileMap.setCollisionByExclusion([-1])
   }
 
-  // // Handle overlap between player and object
-  // collectStar (player, star) {
-  //   // Removes the star from the screen
-  //   star.kill()
+  handleTileCollision (sprite, tile) {
+    let index = tile.index
+    let text
+    let playerSpeed = this.gameRules.heroSpeedCurrent
+    let bonusPoints = 0
 
-  //   //  Add and update the score
-  //   this.score += 10
-  //   this.scoreText.text = `Score: ${this.score}`
-
-  //   if (this.score === 10 * 12) {
-  //     this.scoreText.text = `You win!`
-  //   }
-  // }
-
-  // // Allow the player to collect stars
-  // starGroup () {
-  //   this.stars = this.add.group()
-
-  //   this.stars.enableBody = true
-
-  //   //  Here we'll create 12 of them evenly spaced apart
-  //   for (let i = 0; i < 12; i++) {
-  //     //  Create a star inside of the 'stars' group
-  //     let star = this.stars.create(i * 70, 0, 'star')
-
-  //     //  Let gravity do its thing
-  //     star.body.gravity.y = 100
-
-  //     //  This just gives each star a slightly random bounce value
-  //     star.body.bounce.y = 0.2 + Math.random() * 0.2
-  //   }
-  // }
-
-  slowDownPlayer (sprite, tile) {
-    if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, '100 POINTS', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    switch (index) {
+      case 1:
+        text = '+50 POINTS!'
+        bonusPoints = 50
+        break
+      case 2:
+        text = 'SLOW DOWN'
+        playerSpeed = 100
+        break
+      case 3:
+        text = 'SPEED UP'
+        playerSpeed = 220
+        break
+      case 4:
+        text = '+100 POINTS!'
+        bonusPoints = 100
+        break
+      default:
+        break
     }
+
+    // If we haven't hit the tile yet
+    if (tile.alpha === 1) {
+      this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    }
+
     this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.pointInfo.lifespan = 400
 
+    this.score += bonusPoints // won't work
+
     tile.alpha = 0.2
-    this.gameRules.heroSpeedCurrent = 120
+    this.gameRules.heroSpeedCurrent = playerSpeed
     this.playerColor.current = 0xFF0000
     this.mapLayer.dirty = true
 
     // Add the touched tile to an array
-    this.touchableTiles.push(tile)
-  }
-
-  speedUpPlayer (sprite, tile) {
-    if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, '50 POINTS', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    }
-    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.pointInfo.lifespan = 400
-    
-    tile.alpha = 0.2
-    this.gameRules.heroSpeedCurrent = 220
-    this.playerColor.current = 0xFFFFFF
-    this.mapLayer.dirty = true
-    // Add tile to array for later reset
     this.touchableTiles.push(tile)
   }
 
