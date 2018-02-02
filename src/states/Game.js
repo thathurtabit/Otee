@@ -33,7 +33,7 @@ export default class extends Phaser.State {
       gameSpeed: 1,
       heroSpeedDefault: 180,
       heroSpeedFast: 200,
-      heroSpeedSlow: 160, 
+      heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
       triggerCameraHeight: 250
     }
@@ -66,7 +66,7 @@ export default class extends Phaser.State {
     this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
 
     // Collision
-    this.tileMap.setCollisionByExclusion([-1])
+    this.tileMap.setCollisionByExclusion([-1, 5])
   }
 
   handleTileCollision (sprite, tile) {
@@ -138,6 +138,8 @@ export default class extends Phaser.State {
     this.trail.drawCircle(x, y, 1)
     // Kill off after this time...
     this.trail.lifespan = 500
+
+    this.playerGroup.add(this.trail)
   }
 
   // Player
@@ -161,6 +163,8 @@ export default class extends Phaser.State {
     if (this.player.inCamera === false && this.gameInPlay) {
       this.handleGameOver()
     }
+
+    this.playerGroup.add(this.player)
   }
 
   // Movement events
@@ -340,7 +344,12 @@ export default class extends Phaser.State {
     this.physics.startSystem(Phaser.Physics.ARCADE)
 
     this.wallBuilder()
+    this.playerGroup = this.add.group()
     this.playerBuilder()
+    this.tunnelGroup = this.add.group()
+    //this.tileMap.createFromTiles(tiles, replacements, key, layer, group, properties)
+    this.tileMap.createFromTiles(5, 5, null, this.mapLayer, this.tunnelGroup)
+
     this.scoreText()
     this.startMenu()
   }
@@ -368,6 +377,10 @@ export default class extends Phaser.State {
     if ((!this.gameInPlay && this.enter.isDown) || (!this.gameInPlay && this.enterNumpad.isDown)) {
       this.handleReset()
     }
+
+    // Handle z order
+    this.game.world.sendToBack(this.playerGroup)
+    this.game.world.bringToTop(this.tunnelGroup)
   }
 
   render () {
