@@ -12,7 +12,7 @@
     <style>
         html,
         body {
-            background: #754ceb;
+            background: #1c1734;
             margin: 0;
             padding: 0;
             font-family: 'Press Start 2P', sans-serif;
@@ -25,17 +25,31 @@
         }
         h1,
         h2 {
-            font-size: 12px;
+            font-size: 20px;
+            line-height: 20px;
         }
+
+        h1 span,
+        h2 span {
+            color: rgba(255, 0, 0, 0.5);
+            display: block;
+            font-size: 6px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        } 
         p {
             font-size: 10px;
         }
+        .inst {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+        }
         .cols {
-            display: flex;
             align-items: center;
-            justify-content: center;
+            display: flex;
             flex-direction: column;
             flex: 1;
+            justify-content: center;
         }
         #game {
             margin: 0 auto;
@@ -47,13 +61,13 @@
 <body>
     <div id="wrapper">
         <div class="cols">
-            <h1>Phaser Game Test</h1>
-            <p>Use [←][↑][↓][→] to MOVE</p>
+            <h1><span>Welcome to </span>The Void</h1>
+            <p class="inst">Use ← ↑ ↓ → to MOVE</p>
         </div>
         <div id="game"></div>
         <div class="cols">
-            <h2>Phaser Game Test</h2>
-            <p>Use [←][↑][↓][→] to MOVE</p>
+            <h2><span>Welcome to </span>The Void</h2>
+            <p class="inst">Use ← ↑ ↓ → to MOVE</p>
         </div>
     </div>
     <!-- uncomment the line bellow for cordova feature -->
