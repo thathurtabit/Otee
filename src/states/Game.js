@@ -389,8 +389,8 @@ export default class extends Phaser.State {
   }
 
   scoreText () {
-    this.scoreText = this.add.text(10, 10, 'Score: 0', {font: 'Press Start 2P', fontSize: '12px', fill: '#fff'})
-    this.highScoreText = this.add.text(0, 10, `High: ${localStorage.highScore || 0}`, { font: 'Press Start 2P', fontSize: '12px', fill: '#fff', align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
+    this.scoreText = this.add.text(10, 10, 'Score: 0', {font: 'Press Start 2P', fontSize: '10px', fill: '#fff'})
+    this.highScoreText = this.add.text(0, 10, `High: ${localStorage.highScore || 0}`, { font: 'Press Start 2P', fontSize: '10px', fill: '#fff', align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
     this.scorePanel.add(this.scoreText)
