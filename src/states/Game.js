@@ -5,16 +5,15 @@ export default class extends Phaser.State {
   constructor () {
     super()
 
-    this.backgroundColor = 'red'
     this.player = this.player
     this.cursors = this.cursors
-    this.stars = this.stars
     this.score = 0
     this.gameInPlay = false
     this.endGame = false
     this.scoreText = this.scoreText
     this.tileMap = this.tileMap
     this.mapLayer = this.mapLayer
+    this.getNewStartTime = true
     this.direction = 'down'
     this.gameStartText = this.gameStartText
     this.playerSize = 14
@@ -186,8 +185,6 @@ export default class extends Phaser.State {
 
   scorePanelBuilder () {
     this.scorePanel = this.add.group()
-    this.scorePanel.x = 50
-    this.scorePanel.y = 100
     this.scorePanel.alpha = 0.95
     this.scorePanel.width = this.camera.width
     this.scorePanel.fixedToCamera = true
@@ -198,8 +195,10 @@ export default class extends Phaser.State {
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
+  }
 
-    console.log(this.scorePanel)
+  endGameInfoBuilder () {
+
   }
 
   // Movement events
@@ -299,9 +298,14 @@ export default class extends Phaser.State {
   handleGameInPlay () {
     this.startInfo.kill()
     // if it bleeds we can kill it
-    if (this.gameOverInfo) {
-      this.gameOverInfo.kill()
+    if (this.startAgainText) {
+      this.startAgainText.kill()
     }
+    // Only required once per loop to generate total time
+    if (this.getNewStartTime) {
+      this.startTime = Date.now()
+    }
+    this.getNewStartTime = false
 
     // To move player
     this.movePlayer()
@@ -319,8 +323,7 @@ export default class extends Phaser.State {
   }
 
   handleReset () {
-    this.restartInfo.kill()
-    this.scoreInfo.kill()
+    this.endGamePanel.kill()
     this.trail.destroy()
     this.score = 0
     this.player.x = this.playerStart.x
@@ -334,12 +337,12 @@ export default class extends Phaser.State {
     this.playerColor.current = this.playerColor.default
     this.resetTouchableTiles()
 
-    this.gameOverInfo.text = 'SPACEBAR to start'
+    this.startAgainInfo()
   }
 
   handleGameOver () {
-    this.direction = null
     this.endGame = true
+    this.direction = null
     this.gameInPlay = false
 
     this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
@@ -348,7 +351,7 @@ export default class extends Phaser.State {
     this.playerInfo.lifespan = 1000
 
     //  You can set your own intensity and duration
-    this.camera.shake(0.02, 500)
+    this.camera.shake(0.01, 500)
 
     //  Reset the players velocity (keyboardEvents)
     this.player.body.velocity.x = 0
@@ -357,19 +360,60 @@ export default class extends Phaser.State {
     let centerX = this.camera.width / 2
     let centerY = this.camera.height / 2
 
-    // To do, collect all this info in a group?
-    this.scoreInfo = this.add.text(centerX, centerY - 50, `Score: ${this.score} `, { font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.gameOverInfo = this.add.text(centerX, centerY - 12, 'GAME OVER', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    // Create Group for Info
+    this.endGamePanel = this.add.group()
+    this.endGamePanel.alpha = 0.95
+    this.endGamePanel.width = this.camera.width - 30
+    this.endGamePanel.fixedToCamera = true
+
+    let endGameBG = this.add.graphics(0, 0)
+    endGameBG.beginFill(this.playerColor.current, 1)
+    endGameBG.drawRect(35, (this.camera.height / 2) - 85, this.camera.width - 80, 170)
+    endGameBG.anchor.set(0.5, 0.5)
+
+    // use the bitmap data as the texture for the sprite
+    this.endGamePanel.add(endGameBG)
+
+    // Get play time
+    this.totalTime = this.msToTime(Date.now() - this.startTime)
+    this.getNewStartTime = true
+
+    // Game over text
+    this.gameOverInfo = this.add.text(centerX, centerY - 40, 'GAME OVER', { font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.restartInfo = this.add.text(centerX, centerY + 20, 'Press ENTER to reset', { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    // Score
+    this.scoreInfo = this.add.text(centerX, centerY - 5, `Score: ${this.score} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
+    // Time
+    this.totalTimeInfo = this.add.text(centerX, centerY + 22, `Time: ${this.totalTime} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
+    // Restart info
+    this.restartInfo = this.add.text(centerX, centerY + 50, 'Press ENTER to reset', { font: 'Press Start 2P', backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Fix to camera position
-    this.scoreInfo.fixedToCamera = true
-    this.gameOverInfo.fixedToCamera = true
-    this.restartInfo.fixedToCamera = true
+    // Add text to group
+    this.endGamePanel.add(this.scoreInfo)
+    this.endGamePanel.add(this.totalTimeInfo)
+    this.endGamePanel.add(this.gameOverInfo)
+    this.endGamePanel.add(this.restartInfo)
 
     this.setHighScore()
+  }
+
+  msToTime (ms) {
+    let dt = new Date(ms)
+    let mins = dt.getMinutes()
+    let secs = parseInt(dt.getSeconds(), 10)
+    let millis = parseInt(dt.getMilliseconds(), 10)
+
+    let tm = `${mins ? mins + 'm ' : ''}${secs}.${Math.ceil(millis / 100)}s`
+    return tm
+  }
+
+  startAgainInfo () {
+    let centerX = this.camera.width / 2
+    let centerY = this.camera.height / 2
+    this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
   }
 
   updateScore () {
@@ -383,8 +427,7 @@ export default class extends Phaser.State {
     let centerY = this.camera.height / 2
 
     if (!this.gameInPlay) {
-      this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
+      this.startAgainInfo()
     }
   }
 
@@ -398,6 +441,7 @@ export default class extends Phaser.State {
   }
 
   setHighScore () {
+    this.startTime = 0
     // Set a hightScore localStorage variable if it hasn't already been set
     if (localStorage.getItem('highScore') === null) {
       localStorage.setItem('highScore', this.score)
@@ -437,8 +481,6 @@ export default class extends Phaser.State {
     }
 
     if (this.gameInPlay) {
-      // Set initial direction
-      // Hero keyboard events
       this.keyboardEvents()
       this.handleGameInPlay()
     }
