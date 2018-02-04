@@ -103,7 +103,7 @@ export default class extends Phaser.State {
         bonusPoints = 100
         break
       case 5:
-        tileAlpha = 0.95
+        tileAlpha = 0.9
         break
       default:
         break
@@ -124,8 +124,14 @@ export default class extends Phaser.State {
     this.gameRules.heroSpeedCurrent = playerSpeed
     this.mapLayer.dirty = true
 
-    // Add the touched tile to an array
-    this.touchableTiles.push(tile)
+    // Tiles to be reset for each death go here
+    if (index === 5) {
+      // Add the touched tile to an array
+      this.touchableTiles.push(tile)
+    } else {
+      // Else end of game reset tiles go here
+      this.specialTouchableTiles.push(tile)
+    }
   }
 
   // Reset touched tiles
@@ -355,6 +361,7 @@ export default class extends Phaser.State {
 
     this.trail.destroy()
     this.score = 0
+    this.scoreText.text = `Score: ${this.score}`
     this.player.x = this.playerStart.x
     this.player.y = this.playerStart.y
     this.camera.y = 0
@@ -463,7 +470,7 @@ export default class extends Phaser.State {
     this.endGamePanel.add(this.gameOverInfo)
     this.endGamePanel.add(this.restartInfo)
 
-    this.add.tween(this.endGamePanel).to({alpha: 1}, 500, Phaser.Easing.Back.Out, true, 500)    
+    this.add.tween(this.endGamePanel).to({alpha: 1}, 250, 'Linear', true)
 
     this.setHighScore()
   }
@@ -527,6 +534,7 @@ export default class extends Phaser.State {
     this.centerY = this.camera.height / 2
 
     this.wallBuilder()
+    this.goalInfo = this.add.text(125, 100, 'REACH THE CHECKPOINT', { font: 'Press Start 2P', fontSize: '8px', fill: 'rgba(255, 255, 255, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.playerGroup = this.add.group()
     this.playerBuilder()
     this.tunnelGroup = this.add.group()
