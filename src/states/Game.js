@@ -27,7 +27,8 @@ export default class extends Phaser.State {
     }
     this.playerStart = {
       x: 198,
-      y: 50
+      y: 0,
+      inPosition: false
     }
     this.bonusPoints = 0
     this.gameRules = {
@@ -179,6 +180,8 @@ export default class extends Phaser.State {
     if (this.player.inCamera === false && this.gameInPlay) {
       this.handleGameOver()
     }
+
+    this.add.tween(this.player).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 1000)
 
     this.playerGroup.add(this.player)
   }
@@ -336,14 +339,28 @@ export default class extends Phaser.State {
     this.gameRules.reversePlayer = false
     this.playerColor.current = this.playerColor.default
     this.resetTouchableTiles()
+    // Put player in position
+    this.readyPlayerOne()
+  }
 
-    this.startAgainInfo()
+  readyPlayerOne () {
+    // Tween player in before starting...
+    let tweenPlayerIn = this.add.tween(this.player).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 500)
+    tweenPlayerIn.onComplete.add(() => {
+      // Player needs to be in position nefore starting
+      this.playerStart.inPosition = true
+
+      if (!this.gameInPlay) {
+        this.startAgainInfo()
+      }
+    })
   }
 
   handleGameOver () {
     this.endGame = true
     this.direction = null
     this.gameInPlay = false
+    this.playerStart.inPosition = false
 
     this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.playerInfo.anchor.setTo(0.5) // set anchor to middle / center
@@ -412,23 +429,17 @@ export default class extends Phaser.State {
   startAgainInfo () {
     let centerX = this.camera.width / 2
     let centerY = this.camera.height / 2
-    this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
+
+    this.startInfo.alpha = 0.5
+    this.add.tween(this.startInfo).to({ alpha: 1 }, 250, 'Linear', true, 250).yoyo(true).loop(true)
   }
 
   updateScore () {
     this.score = Math.floor(this.player.y - this.playerStart.y) + this.bonusPoints
     this.scoreText.text = `Score: ${this.score}`
     this.highScoreText.text = `High: ${localStorage.highScore || 0}`
-  }
-
-  startMenu () {
-    let centerX = this.camera.width / 2
-    let centerY = this.camera.height / 2
-
-    if (!this.gameInPlay) {
-      this.startAgainInfo()
-    }
   }
 
   scoreText () {
@@ -465,7 +476,7 @@ export default class extends Phaser.State {
     this.tileMap.createFromTiles(5, 5, null, this.mapLayer, this.tunnelGroup)
     this.scorePanelBuilder()
     this.scoreText()
-    this.startMenu()
+    this.readyPlayerOne()
   }
 
   update () {
@@ -475,8 +486,8 @@ export default class extends Phaser.State {
 
     this.updateScore()
 
-    // If we're not already playing, and not in the game over phase, and the spacebar is pressed...
-    if (!this.gameInPlay && !this.endGame && this.spacebar.isDown) {
+    // If we're not already playing, and not in the game over phase, and the player is in position, and the spacebar is pressed... *phew*
+    if (!this.gameInPlay && !this.endGame && this.playerStart.inPosition && this.spacebar.isDown) {
       this.gameInPlay = true
     }
 
