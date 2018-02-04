@@ -14,10 +14,12 @@ export default class extends Phaser.State {
     this.tileMap = this.tileMap
     this.mapLayer = this.mapLayer
     this.getNewStartTime = true
+    this.gameOver = false
     this.direction = 'down'
     this.gameStartText = this.gameStartText
     this.playerSize = 14
     this.touchableTiles = []
+    this.specialTouchableTiles = []
     this.playerColor = {
       current: 0xff9770,
       default: 0xff9770,
@@ -27,8 +29,9 @@ export default class extends Phaser.State {
     }
     this.playerStart = {
       x: 198,
-      y: 0,
-      inPosition: false
+      y: 50,
+      inPosition: false,
+      lives: 3
     }
     this.bonusPoints = 0
     this.gameRules = {
@@ -69,6 +72,7 @@ export default class extends Phaser.State {
     this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(5, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(6, this.reversePlayer, this)
+    this.tileMap.setTileIndexCallback(7, this.handle1Up, this)
 
     // Collision
     this.tileMap.setCollisionByExclusion([-1, 5])
@@ -99,7 +103,6 @@ export default class extends Phaser.State {
         bonusPoints = 100
         break
       case 5:
-        text = 'IT\'S DARK!'
         tileAlpha = 0.95
         break
       default:
@@ -119,7 +122,6 @@ export default class extends Phaser.State {
     // Change opacity down
     tile.alpha = tileAlpha
     this.gameRules.heroSpeedCurrent = playerSpeed
-    this.playerColor.current = 0xFF0000
     this.mapLayer.dirty = true
 
     // Add the touched tile to an array
@@ -138,11 +140,37 @@ export default class extends Phaser.State {
     this.touchableTiles = []
   }
 
+  // Reset SPECIAL touched tiles - reset only on GAME OVER
+  resetSpecialTouchableTiles () {
+    // Convert alpha back to 1
+    this.specialTouchableTiles.forEach((touchedTile) => {
+      touchedTile.alpha = 1
+    })
+    // Refresh map
+    this.mapLayer.dirty = true
+    // Clear touched tiles array
+    this.specialTouchableTiles = []
+  }
+
   reversePlayer (sprite, tile) {
     this.gameRules.reversePlayer = true
     tile.alpha = 0.2
     // Add the touched tile to an array
     this.touchableTiles.push(tile)
+  }
+
+  handle1Up (sprite, tile) {
+    // When we hit the tile, do things only once...
+    if (tile.alpha === 1) {
+      this.pointInfo = this.add.text(this.player.x, this.player.y, '1 UP!', { font: 'Press Start 2P', fontSize: '12px', fill: '#333', backgroundColor: '#fdd971', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+      this.playerStart.lives += 1
+    }
+    this.pointInfo.lifespan = 400
+    tile.alpha = 0.2
+    this.mapLayer.dirty = true
+    // Add the SPECIAL touched tile to an array - reset only on GAME OVER
+    this.specialTouchableTiles.push(tile)
   }
 
   // Store Hero History
@@ -178,7 +206,7 @@ export default class extends Phaser.State {
     this.player.checkWorldBounds = true
 
     if (this.player.inCamera === false && this.gameInPlay) {
-      this.handleGameOver()
+      this.handleLossOfLife()
     }
 
     this.add.tween(this.player).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 1000)
@@ -198,10 +226,6 @@ export default class extends Phaser.State {
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
-  }
-
-  endGameInfoBuilder () {
-
   }
 
   // Movement events
@@ -315,18 +339,20 @@ export default class extends Phaser.State {
     this.moveCamera()
 
     // Collide the player and the stars with the walls
-    this.physics.arcade.collide(this.player, this.mapLayer, this.handleGameOver, null, this)
+    this.physics.arcade.collide(this.player, this.mapLayer, this.handleLossOfLife, null, this)
     // When the player hits the edge of the screen
-    this.player.events.onOutOfBounds.add(this.handleGameOver, this)
+    this.player.events.onOutOfBounds.add(this.handleLossOfLife, this)
 
     // If player is off screen
     if (this.player.y <= this.game.camera.y + (this.playerSize / 2)) {
-      this.handleGameOver()
+      this.handleLossOfLife()
     }
   }
 
   handleReset () {
-    this.endGamePanel.kill()
+    if (this.endGamePanel) this.endGamePanel.kill()
+    if (this.restartInfo) this.restartInfo.kill()
+
     this.trail.destroy()
     this.score = 0
     this.player.x = this.playerStart.x
@@ -339,13 +365,23 @@ export default class extends Phaser.State {
     this.gameRules.reversePlayer = false
     this.playerColor.current = this.playerColor.default
     this.resetTouchableTiles()
+
+    if (this.gameOver) {
+      // Reset
+      this.playerStart.lives = 3
+      this.livesLeft.text = `Lives: ${this.playerStart.lives}`
+      // Reset special tiles
+      this.resetSpecialTouchableTiles()
+    }
+    // Reset gameOver value (after Game over happens)
+    this.gameOver = false
     // Put player in position
     this.readyPlayerOne()
   }
 
   readyPlayerOne () {
     // Tween player in before starting...
-    let tweenPlayerIn = this.add.tween(this.player).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 500)
+    let tweenPlayerIn = this.add.tween(this.player).from({y: 0}, 500, Phaser.Easing.Back.Out, true, 500)
     tweenPlayerIn.onComplete.add(() => {
       // Player needs to be in position nefore starting
       this.playerStart.inPosition = true
@@ -356,30 +392,44 @@ export default class extends Phaser.State {
     })
   }
 
-  handleGameOver () {
+  handleLossOfLife () {
+    this.playerStart.lives -= 1
     this.endGame = true
     this.direction = null
     this.gameInPlay = false
     this.playerStart.inPosition = false
+
+    this.livesLeft.text = `Lives: ${this.playerStart.lives}`
 
     this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.playerInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Kill off after this time...
     this.playerInfo.lifespan = 1000
 
-    //  You can set your own intensity and duration
-    this.camera.shake(0.01, 500)
-
     //  Reset the players velocity (keyboardEvents)
     this.player.body.velocity.x = 0
     this.player.body.velocity.y = 0
 
-    let centerX = this.camera.width / 2
-    let centerY = this.camera.height / 2
+    //  You can set your own intensity and duration
+    this.camera.shake(0.01, 500)
+
+    // Restart info
+    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER to restart', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.restartInfo.fixedToCamera = true
+
+    if (this.playerStart.lives === 0) {
+      this.handleGameOver()
+    }
+  }
+
+  handleGameOver () {
+    this.gameOver = true
+    this.restartInfo.kill()
 
     // Create Group for Info
     this.endGamePanel = this.add.group()
-    this.endGamePanel.alpha = 0.95
+    this.endGamePanel.alpha = 0
     this.endGamePanel.width = this.camera.width - 30
     this.endGamePanel.fixedToCamera = true
 
@@ -396,22 +446,24 @@ export default class extends Phaser.State {
     this.getNewStartTime = true
 
     // Game over text
-    this.gameOverInfo = this.add.text(centerX, centerY - 40, 'GAME OVER', { font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Score
-    this.scoreInfo = this.add.text(centerX, centerY - 5, `Score: ${this.score} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `Score: ${this.score} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Time
-    this.totalTimeInfo = this.add.text(centerX, centerY + 22, `Time: ${this.totalTime} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `Time: ${this.totalTime} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Restart info
-    this.restartInfo = this.add.text(centerX, centerY + 50, 'Press ENTER to reset', { font: 'Press Start 2P', backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(this.centerX, this.centerY + 50, 'Press ENTER to reset', { font: 'Press Start 2P', backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Add text to group
     this.endGamePanel.add(this.scoreInfo)
     this.endGamePanel.add(this.totalTimeInfo)
     this.endGamePanel.add(this.gameOverInfo)
     this.endGamePanel.add(this.restartInfo)
+
+    this.add.tween(this.endGamePanel).to({alpha: 1}, 500, Phaser.Easing.Back.Out, true, 500)    
 
     this.setHighScore()
   }
@@ -427,10 +479,9 @@ export default class extends Phaser.State {
   }
 
   startAgainInfo () {
-    let centerX = this.camera.width / 2
-    let centerY = this.camera.height / 2
-    this.startInfo = this.add.text(centerX, centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo = this.add.text(this.centerX, this.centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.score = 0
 
     this.startInfo.alpha = 0.5
     this.add.tween(this.startInfo).to({ alpha: 1 }, 250, 'Linear', true, 250).yoyo(true).loop(true)
@@ -439,15 +490,18 @@ export default class extends Phaser.State {
   updateScore () {
     this.score = Math.floor(this.player.y - this.playerStart.y) + this.bonusPoints
     this.scoreText.text = `Score: ${this.score}`
+    this.livesLeft.text = `Lives: ${this.playerStart.lives}`
     this.highScoreText.text = `High: ${localStorage.highScore || 0}`
   }
 
   scoreText () {
     this.scoreText = this.add.text(10, 10, 'Score: 0', {font: 'Press Start 2P', fontSize: '10px', fill: '#fff'})
+    this.livesLeft = this.add.text(160, 10, `Lives: ${this.playerStart.lives}`, {font: 'Press Start 2P', fontSize: '10px', fill: '#fff', align: 'center', boundsAlignH: 'center'})
     this.highScoreText = this.add.text(0, 10, `High: ${localStorage.highScore || 0}`, { font: 'Press Start 2P', fontSize: '10px', fill: '#fff', align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
     this.scorePanel.add(this.scoreText)
+    this.scorePanel.add(this.livesLeft)
     this.scorePanel.add(this.highScoreText)
   }
 
@@ -469,6 +523,9 @@ export default class extends Phaser.State {
     //  We're going to be using physics, so enable the Arcade Physics system
     this.physics.startSystem(Phaser.Physics.ARCADE)
 
+    this.centerX = this.camera.width / 2
+    this.centerY = this.camera.height / 2
+
     this.wallBuilder()
     this.playerGroup = this.add.group()
     this.playerBuilder()
@@ -484,11 +541,14 @@ export default class extends Phaser.State {
     this.enter = this.input.keyboard.addKey(Phaser.Keyboard.ENTER)
     this.enterNumpad = this.input.keyboard.addKey(Phaser.Keyboard.NUMPAD_ENTER)
 
-    this.updateScore()
-
     // If we're not already playing, and not in the game over phase, and the player is in position, and the spacebar is pressed... *phew*
     if (!this.gameInPlay && !this.endGame && this.playerStart.inPosition && this.spacebar.isDown) {
       this.gameInPlay = true
+    }
+
+    // Only update score if player is in position
+    if (this.player.y >= this.playerStart.y + 5) {
+      this.updateScore()
     }
 
     if (this.gameInPlay) {
