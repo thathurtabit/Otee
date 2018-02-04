@@ -20,6 +20,10 @@ export default class extends Phaser.State {
     this.playerSize = 14
     this.touchableTiles = []
     this.specialTouchableTiles = []
+    this.tile = {
+      width: 37,
+      height: 37
+    }
     this.playerColor = {
       current: 0xff9770,
       default: 0xff9770,
@@ -33,7 +37,6 @@ export default class extends Phaser.State {
       inPosition: false,
       lives: 3
     }
-    this.bonusPoints = 0
     this.gameRules = {
       gameSpeed: 1,
       heroSpeedDefault: 160,
@@ -43,6 +46,7 @@ export default class extends Phaser.State {
       triggerCameraHeight: 250,
       reversePlayer: false
     }
+    this.bonusPoints = 0
   }
 
   init () {}
@@ -54,7 +58,7 @@ export default class extends Phaser.State {
   // Walls
   wallBuilder () {
     //  Because we're loading CSV map data we have to specify the tile size here or we can't render it
-    this.tileMap = this.add.tilemap('map', 37, 37)
+    this.tileMap = this.add.tilemap('map', this.tile.width, this.tile.height)
 
     //  Add a Tileset image to the map
     this.tileMap.addTilesetImage('blocks')
@@ -73,6 +77,7 @@ export default class extends Phaser.State {
     this.tileMap.setTileIndexCallback(5, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(6, this.reversePlayer, this)
     this.tileMap.setTileIndexCallback(7, this.handle1Up, this)
+    this.tileMap.setTileIndexCallback(8, this.handleCheckpoint, this)
 
     // Collision
     this.tileMap.setCollisionByExclusion([-1, 5])
@@ -175,6 +180,23 @@ export default class extends Phaser.State {
     this.pointInfo.lifespan = 400
     tile.alpha = 0.2
     this.mapLayer.dirty = true
+    // Add the SPECIAL touched tile to an array - reset only on GAME OVER
+    this.specialTouchableTiles.push(tile)
+  }
+
+  handleCheckpoint (sprite, tile) {
+    // When we hit the tile, do things only once...
+    if (tile.alpha === 1) {
+      this.pointInfo = this.add.text(this.player.x, this.player.y, 'CHECKPOINT!', { font: 'Press Start 2P', fontSize: '12px', fill: '#333', backgroundColor: '#62e79e', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+    }
+    this.pointInfo.lifespan = 400
+    tile.alpha = 0.2
+    this.mapLayer.dirty = true
+
+    this.playerStart.x = (tile.worldX + this.tile.width / 2) - this.playerSize / 2
+    this.playerStart.y = (tile.worldY + this.tile.height / 2) - this.playerSize / 2
+
     // Add the SPECIAL touched tile to an array - reset only on GAME OVER
     this.specialTouchableTiles.push(tile)
   }
@@ -362,9 +384,7 @@ export default class extends Phaser.State {
     this.trail.destroy()
     this.score = 0
     this.scoreText.text = `Score: ${this.score}`
-    this.player.x = this.playerStart.x
-    this.player.y = this.playerStart.y
-    this.camera.y = 0
+
     this.direction = 'down'
     this.endGame = false
     this.bonusPoints = 0
@@ -373,20 +393,35 @@ export default class extends Phaser.State {
     this.playerColor.current = this.playerColor.default
     this.resetTouchableTiles()
 
+    // If it's game over...
     if (this.gameOver) {
       // Reset
       this.playerStart.lives = 3
       this.livesLeft.text = `Lives: ${this.playerStart.lives}`
+      this.camera.y = 0
+      this.playerStart.x = 198 // TODO get rid of hard-value
+      this.playerStart.y = 50 // TODO get rid of hard-value
       // Reset special tiles
       this.resetSpecialTouchableTiles()
+      // Put player in position
+      this.readyPlayerOne()
+    // Else, do things differently
+    } else {
+      this.player.x = this.playerStart.x
+      this.player.y = this.playerStart.y
+      this.camera.y = this.playerStart.y - (this.camera.height / 2 - 100)
+      // Put player in position
+      this.readyPlayerOne()
     }
     // Reset gameOver value (after Game over happens)
     this.gameOver = false
-    // Put player in position
-    this.readyPlayerOne()
   }
 
   readyPlayerOne () {
+    // Move player into start position
+    this.player.x = this.playerStart.x
+    this.player.y = this.playerStart.y
+
     // Tween player in before starting...
     let tweenPlayerIn = this.add.tween(this.player).from({y: 0}, 500, Phaser.Easing.Back.Out, true, 500)
     tweenPlayerIn.onComplete.add(() => {
