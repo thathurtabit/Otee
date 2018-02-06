@@ -3,7 +3,7 @@ import WebFont from 'webfontloader'
 
 export default class extends Phaser.State {
   init () {
-    this.stage.backgroundColor = '#706995'
+    this.stage.backgroundColor = '#ffffff'
     this.fontsReady = false
     this.fontsLoaded = this.fontsLoaded.bind(this)
   }
@@ -11,7 +11,7 @@ export default class extends Phaser.State {
   preload () {
     WebFont.load({
       google: {
-        families: ['Press Start 2P']
+        families: ['Martel Sans']
       },
       active: this.fontsLoaded
     })

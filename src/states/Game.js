@@ -4,7 +4,9 @@ import Phaser from 'phaser'
 export default class extends Phaser.State {
   constructor () {
     super()
-
+    this.style = {
+      font: "'Martel Sans', sans-serif"
+    }
     this.player = this.player
     this.cursors = this.cursors
     this.score = 0
@@ -21,15 +23,15 @@ export default class extends Phaser.State {
     this.touchableTiles = []
     this.specialTouchableTiles = []
     this.tile = {
-      width: 37,
-      height: 37
+      width: 45,
+      height: 45
     }
     this.playerColor = {
-      current: 0xff9770,
-      default: 0xff9770,
+      current: 0x333333,
+      default: 0x333333,
       slow: 0xFF0000,
       fast: 0xFFFFFF,
-      trail: 0xFFFFFF
+      trail: 0x8777f9
     }
     this.playerStart = {
       x: 198,
@@ -116,7 +118,7 @@ export default class extends Phaser.State {
 
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       // Add bonus to total
       this.bonusPoints += bonusPoints
     }
@@ -173,7 +175,7 @@ export default class extends Phaser.State {
   handle1Up (sprite, tile) {
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, '1 UP!', { font: 'Press Start 2P', fontSize: '12px', fill: '#333', backgroundColor: '#fdd971', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo = this.add.text(this.player.x, this.player.y, '1 UP!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#fdd971', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
       this.playerStart.lives += 1
     }
@@ -187,7 +189,7 @@ export default class extends Phaser.State {
   handleCheckpoint (sprite, tile) {
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, 'CHECKPOINT!', { font: 'Press Start 2P', fontSize: '12px', fill: '#333', backgroundColor: '#62e79e', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo = this.add.text(this.player.x, this.player.y, 'CHECKPOINT!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#62e79e', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
     }
     this.pointInfo.lifespan = 400
@@ -203,12 +205,12 @@ export default class extends Phaser.State {
 
   // Store Hero History
   storeHeroHistory (xPos, yPos) {
-    let x = xPos + (this.playerSize / 2) - 1
-    let y = yPos + (this.playerSize / 2) - 1
+    let x = xPos + (this.playerSize / 2) - 3
+    let y = yPos + (this.playerSize / 2) - 3
 
     this.trail = this.add.graphics(0, 0)
     this.trail.beginFill(this.playerColor.trail, 1)
-    this.trail.drawCircle(x, y, 1)
+    this.trail.drawRect(x, y, 4, 4)
     // Kill off after this time...
     this.trail.lifespan = 500
 
@@ -443,7 +445,7 @@ export default class extends Phaser.State {
 
     this.livesLeft.text = `Lives: ${this.playerStart.lives}`
 
-    this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: 'Press Start 2P', fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.playerInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Kill off after this time...
     this.playerInfo.lifespan = 1000
@@ -456,7 +458,7 @@ export default class extends Phaser.State {
     this.camera.shake(0.01, 500)
 
     // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER to restart', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER to restart', { font: this.style.font, fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.restartInfo.fixedToCamera = true
 
@@ -488,16 +490,16 @@ export default class extends Phaser.State {
     this.getNewStartTime = true
 
     // Game over text
-    this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: 'Press Start 2P', fontSize: '25px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Score
-    this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `Score: ${this.score} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `Score: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Time
-    this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `Time: ${this.totalTime} `, { font: 'Press Start 2P', fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `Time: ${this.totalTime} `, { font: this.style.font, fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY + 50, 'Press ENTER to reset', { font: 'Press Start 2P', backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(this.centerX, this.centerY + 50, 'Press ENTER to reset', { font: this.style.font, backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Add text to group
     this.endGamePanel.add(this.scoreInfo)
@@ -521,7 +523,7 @@ export default class extends Phaser.State {
   }
 
   startAgainInfo () {
-    this.startInfo = this.add.text(this.centerX, this.centerY, 'SPACEBAR to start', { font: 'Press Start 2P', fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo = this.add.text(this.centerX, this.centerY, 'SPACEBAR TO START', { font: this.style.font, fontSize: '18px', fontWeight: '900', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.score = 0
 
@@ -531,15 +533,15 @@ export default class extends Phaser.State {
 
   updateScore () {
     this.score = Math.floor(this.player.y - this.playerStart.y) + this.bonusPoints
-    this.scoreText.text = `Score: ${this.score}`
-    this.livesLeft.text = `Lives: ${this.playerStart.lives}`
-    this.highScoreText.text = `High: ${localStorage.highScore || 0}`
+    this.scoreText.text = `SCORE: ${this.score}`
+    this.livesLeft.text = `LIVES: ${this.playerStart.lives}`
+    this.highScoreText.text = `HIGH: ${localStorage.highScore || 0}`
   }
 
   scoreText () {
-    this.scoreText = this.add.text(10, 10, 'Score: 0', {font: 'Press Start 2P', fontSize: '10px', fill: '#fff'})
-    this.livesLeft = this.add.text(160, 10, `Lives: ${this.playerStart.lives}`, {font: 'Press Start 2P', fontSize: '10px', fill: '#fff', align: 'center', boundsAlignH: 'center'})
-    this.highScoreText = this.add.text(0, 10, `High: ${localStorage.highScore || 0}`, { font: 'Press Start 2P', fontSize: '10px', fill: '#fff', align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
+    this.scoreText = this.add.text(10, 10, 'SCORE: 0', {font: this.style.font, fontSize: '25px', fontWeight: '900', fill: '#fff'})
+    this.livesLeft = this.add.text(160, 10, `LIVES: ${this.playerStart.lives}`, {font: this.style.font, fontSize: '25px', fontWeight: '900', fill: '#fff', align: 'center', boundsAlignH: 'center'})
+    this.highScoreText = this.add.text(0, 10, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '25px', fill: '#fff', fontWeight: '900', align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
     this.scorePanel.add(this.scoreText)
@@ -556,7 +558,7 @@ export default class extends Phaser.State {
     } else if (this.score > localStorage.getItem('highScore')) {
       localStorage.setItem('highScore', this.score)
       this.highScore = localStorage.highScore
-      this.highScoreText.text = `High Score: ${this.highScore}`
+      this.highScoreText.text = `HIGH: ${this.highScore}`
     }
   }
 
@@ -569,7 +571,7 @@ export default class extends Phaser.State {
     this.centerY = this.camera.height / 2
 
     this.wallBuilder()
-    this.goalInfo = this.add.text(125, 100, 'REACH THE CHECKPOINT', { font: 'Press Start 2P', fontSize: '8px', fill: 'rgba(255, 255, 255, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.goalInfo = this.add.text(125, 100, 'REACH THE CHECKPOINT', { font: this.style.font, fontSize: '8px', fill: 'rgba(0, 0, 0, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.playerGroup = this.add.group()
     this.playerBuilder()
     this.tunnelGroup = this.add.group()
