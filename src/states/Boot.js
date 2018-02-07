@@ -11,7 +11,7 @@ export default class extends Phaser.State {
   preload () {
     WebFont.load({
       google: {
-        families: ['Martel Sans']
+        families: ['Raleway:900,700']
       },
       active: this.fontsLoaded
     })

@@ -5,7 +5,7 @@ export default class extends Phaser.State {
   constructor () {
     super()
     this.style = {
-      font: "'Martel Sans', sans-serif"
+      font: 'Raleway'
     }
     this.player = this.player
     this.cursors = this.cursors
@@ -26,9 +26,17 @@ export default class extends Phaser.State {
       width: 45,
       height: 45
     }
+    this.panel = {
+      bgCol: 0xffd670,
+      textCol: 0x333333
+    }
+    this.overlay = {
+      bgCol: '#8777f9',
+      textCol: '#ffffff'
+    }
     this.playerColor = {
-      current: 0x333333,
-      default: 0x333333,
+      current: 0x8777f9,
+      default: 0x8777f9,
       slow: 0xFF0000,
       fast: 0xFFFFFF,
       trail: 0x8777f9
@@ -251,7 +259,7 @@ export default class extends Phaser.State {
     this.scorePanel.fixedToCamera = true
 
     let scoreBg = this.add.graphics(0, 0)
-    scoreBg.beginFill(this.playerColor.current, 1)
+    scoreBg.beginFill(this.panel.bgCol, 1)
     scoreBg.drawRect(0, 0, this.camera.width, 30)
 
     // use the bitmap data as the texture for the sprite
@@ -458,7 +466,7 @@ export default class extends Phaser.State {
     this.camera.shake(0.01, 500)
 
     // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER to restart', { font: this.style.font, fontSize: '18px', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER TO RESTART', { font: this.style.font, fontSize: '20px', fill: this.overlay.textCol, backgroundColor: this.overlay.bgCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.restartInfo.fixedToCamera = true
 
@@ -523,7 +531,7 @@ export default class extends Phaser.State {
   }
 
   startAgainInfo () {
-    this.startInfo = this.add.text(this.centerX, this.centerY, 'SPACEBAR TO START', { font: this.style.font, fontSize: '18px', fontWeight: '900', fill: '#FFF', backgroundColor: '#ff9770', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo = this.add.text(this.centerX, this.centerY, 'SPACEBAR TO START', { font: this.style.font, fontSize: '20px', fill: this.overlay.textCol, backgroundColor: this.overlay.bgCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.score = 0
 
@@ -539,9 +547,9 @@ export default class extends Phaser.State {
   }
 
   scoreText () {
-    this.scoreText = this.add.text(10, 10, 'SCORE: 0', {font: this.style.font, fontSize: '25px', fontWeight: '900', fill: '#fff'})
-    this.livesLeft = this.add.text(160, 10, `LIVES: ${this.playerStart.lives}`, {font: this.style.font, fontSize: '25px', fontWeight: '900', fill: '#fff', align: 'center', boundsAlignH: 'center'})
-    this.highScoreText = this.add.text(0, 10, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '25px', fill: '#fff', fontWeight: '900', align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
+    this.scoreText = this.add.text(10, 8, 'SCORE: 0', {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
+    this.livesLeft = this.add.text(178, 8, `LIVES: ${this.playerStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
+    this.highScoreText = this.add.text(0, 8, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
     this.scorePanel.add(this.scoreText)
@@ -571,7 +579,7 @@ export default class extends Phaser.State {
     this.centerY = this.camera.height / 2
 
     this.wallBuilder()
-    this.goalInfo = this.add.text(125, 100, 'REACH THE CHECKPOINT', { font: this.style.font, fontSize: '8px', fill: 'rgba(0, 0, 0, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.goalInfo = this.add.text(130, 120, 'REACH THE CHECKPOINT', { font: this.style.font, fontSize: '12px', fill: 'rgba(0, 0, 0, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.playerGroup = this.add.group()
     this.playerBuilder()
     this.tunnelGroup = this.add.group()
