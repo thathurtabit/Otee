@@ -31,7 +31,8 @@ export default class extends Phaser.State {
       textCol: 0x333333
     }
     this.overlay = {
-      bgCol: '#8777f9',
+      bgColHex: '#8777f9',
+      bgCol: 0x8777f9,
       textCol: '#ffffff'
     }
     this.playerColor = {
@@ -363,8 +364,8 @@ export default class extends Phaser.State {
   handleGameInPlay () {
     this.startInfo.kill()
     // if it bleeds we can kill it
-    if (this.startAgainText) {
-      this.startAgainText.kill()
+    if (this.startPanelBG) {
+      this.startPanelBG.kill()
     }
     // Only required once per loop to generate total time
     if (this.getNewStartTime) {
@@ -466,7 +467,7 @@ export default class extends Phaser.State {
     this.camera.shake(0.01, 500)
 
     // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER TO RESTART', { font: this.style.font, fontSize: '20px', fill: this.overlay.textCol, backgroundColor: this.overlay.bgCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER TO RESTART', { font: this.style.font, fontSize: '20px', fill: this.overlay.textCol, backgroundColor: this.overlay.bgColHex, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.restartInfo.fixedToCamera = true
 
@@ -485,13 +486,13 @@ export default class extends Phaser.State {
     this.endGamePanel.width = this.camera.width - 30
     this.endGamePanel.fixedToCamera = true
 
-    let endGameBG = this.add.graphics(0, 0)
-    endGameBG.beginFill(this.playerColor.current, 1)
-    endGameBG.drawRect(35, (this.camera.height / 2) - 85, this.camera.width - 80, 170)
-    endGameBG.anchor.set(0.5, 0.5)
+    this.endGameBG = this.add.graphics(0, 0)
+    this.endGameBG.beginFill(this.playerColor.current, 1)
+    this.endGameBG.drawRect(35, (this.camera.height / 2) - 85, this.camera.width - 80, 170)
+    this.endGameBG.anchor.set(0.5, 0.5)
 
     // use the bitmap data as the texture for the sprite
-    this.endGamePanel.add(endGameBG)
+    this.endGamePanel.add(this.endGameBG)
 
     // Get play time
     this.totalTime = this.msToTime(Date.now() - this.startTime)
@@ -531,12 +532,29 @@ export default class extends Phaser.State {
   }
 
   startAgainInfo () {
-    this.startInfo = this.add.text(this.centerX, this.centerY, 'SPACEBAR TO START', { font: this.style.font, fontSize: '20px', fill: this.overlay.textCol, backgroundColor: this.overlay.bgCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.score = 0
+    this.startPanelBG = this.add.graphics(this.centerX, this.centerY)
+    this.startPanelBG.beginFill(this.overlay.bgCol, 1)
+    this.startPanelBG.drawCircle(0, 0, 170)
+    this.startPanelBG.world.x = this.centerX
+    this.startPanelBG.world.y = this.centerY
+    this.startPanelBG.fixedToCamera = true
+    this.startPanelBG.anchor.set(0.5)    
+    this.startPanelBG.alpha = 1
+    this.startPanelBG.scale.x = 1
+    this.startPanelBG.scale.y = 1
 
-    this.startInfo.alpha = 0.5
-    this.add.tween(this.startInfo).to({ alpha: 1 }, 250, 'Linear', true, 250).yoyo(true).loop(true)
+    this.startInfo = this.add.text(0, 5, 'SPACEBAR TO START', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
+
+    this.startPanelBG.addChild(this.startInfo)
+
+    this.score = 0
+    let startTween1 = this.add.tween(this.startPanelBG).from({ alpha: 0 }, 1000, 'Linear')
+    let startTween2 = this.add.tween(this.startPanelBG.scale).to({ x: 1.05, y: 1.05 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
+
+    startTween1.chain(startTween2)
+    startTween1.start()
+    //this.add.tween(this.startPanel).to({ alpha: 1 }, 1000, 'Linear', true, 250).yoyo(true).loop(true)
   }
 
   updateScore () {
