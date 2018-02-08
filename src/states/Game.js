@@ -28,7 +28,7 @@ export default class extends Phaser.State {
     }
     this.panel = {
       bgCol: 0xffd670,
-      textCol: 0x333333
+      textCol: 0x2D3A44
     }
     this.overlay = {
       bgColHex: '#8777f9',
