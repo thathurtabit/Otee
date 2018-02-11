@@ -7,14 +7,9 @@ export default class extends Phaser.State {
     this.style = {
       font: 'Raleway'
     }
-    this.player = this.player
-    this.cursors = this.cursors
     this.score = 0
     this.gameInPlay = false
     this.endGame = false
-    this.scoreText = this.scoreText
-    this.tileMap = this.tileMap
-    this.mapLayer = this.mapLayer
     this.getNewStartTime = true
     this.gameOver = false
     this.direction = 'down'
@@ -25,6 +20,10 @@ export default class extends Phaser.State {
     this.tile = {
       width: 45,
       height: 45
+    }
+    this.objects = {
+      layer: 'otee-objects-layer',
+      name: 'otee-objects'
     }
     this.panel = {
       bgCol: 0xffd670,
@@ -40,7 +39,7 @@ export default class extends Phaser.State {
       default: 0x8777f9,
       slow: 0xFF0000,
       fast: 0xFFFFFF,
-      trail: 0x8777f9
+      trail: 0xDDDDDD
     }
     this.playerStart = {
       x: 198,
@@ -62,36 +61,38 @@ export default class extends Phaser.State {
 
   init () {}
   preload () {
-    this.load.tilemap('map', 'assets/data/phaser-game-tile.csv', null, Phaser.Tilemap.CSV)
     this.load.image('blocks', 'assets/images/tiles.png')
+    this.load.image('objects', 'assets/images/objects.png')
+    this.load.tilemap('map1', 'assets/data/otee-map-1.json', null, Phaser.Tilemap.TILED_JSON)
   }
 
   // Walls
   wallBuilder () {
-    //  Because we're loading CSV map data we have to specify the tile size here or we can't render it
-    this.tileMap = this.add.tilemap('map', this.tile.width, this.tile.height)
+    this.tileMap = this.add.tilemap('map1')
 
-    //  Add a Tileset image to the map
-    this.tileMap.addTilesetImage('blocks')
+    //  The first parameter is the tileset name, as specified in the Tiled map editor (and in the tilemap json file)
+    //  The second parameter maps this name to the Phaser.Cache key 'blocks'
+    this.tileMap.addTilesetImage('otee-tileset', 'blocks')
+    this.tileMap.addTilesetImage('otee-objects', 'objects')
 
-    // Creates a map layer
-    this.mapLayer = this.tileMap.createLayer(0)
+    //  Creates a layer from the JSON layer in the map data.
+    //  A Layer is effectively like a Phaser.Sprite, so is added to the display list.
+    this.mapLayer = this.tileMap.createLayer('otee-tile-layer')
 
-    //  Resize the world
-    this.mapLayer.resizeWorld()
+    this.objectsGroup = this.add.physicsGroup()
 
     // See handleTileCollision
-    this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(5, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(6, this.reversePlayer, this)
-    this.tileMap.setTileIndexCallback(7, this.handle1Up, this)
-    this.tileMap.setTileIndexCallback(8, this.handleCheckpoint, this)
+    // this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
+    // this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
+    // this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
+    // this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
+    // this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
+    // this.tileMap.setTileIndexCallback(6, this.reversePlayer, this)
+    // this.tileMap.setTileIndexCallback(7, this.handle1Up, this)
+    // this.tileMap.setTileIndexCallback(8, this.handleCheckpoint, this)
 
     // Collision
-    this.tileMap.setCollisionByExclusion([-1, 5])
+    this.tileMap.setCollisionByExclusion([2, 4])
   }
 
   handleTileCollision (sprite, tile) {
@@ -214,12 +215,12 @@ export default class extends Phaser.State {
 
   // Store Hero History
   storeHeroHistory (xPos, yPos) {
-    let x = xPos + (this.playerSize / 2) - 3
-    let y = yPos + (this.playerSize / 2) - 3
+    let x = xPos + (this.playerSize / 2) - 2
+    let y = yPos + (this.playerSize / 2) - 2
 
     this.trail = this.add.graphics(0, 0)
     this.trail.beginFill(this.playerColor.trail, 1)
-    this.trail.drawRect(x, y, 4, 4)
+    this.trail.drawRect(x, y, 2, 2)
     // Kill off after this time...
     this.trail.lifespan = 500
 
@@ -255,7 +256,6 @@ export default class extends Phaser.State {
 
   scorePanelBuilder () {
     this.scorePanel = this.add.group()
-    this.scorePanel.alpha = 0.95
     this.scorePanel.width = this.camera.width
     this.scorePanel.fixedToCamera = true
 
@@ -538,7 +538,7 @@ export default class extends Phaser.State {
     this.startPanelBG.world.x = this.centerX
     this.startPanelBG.world.y = this.centerY
     this.startPanelBG.fixedToCamera = true
-    this.startPanelBG.anchor.set(0.5)    
+    this.startPanelBG.anchor.set(0.5)
     this.startPanelBG.alpha = 1
     this.startPanelBG.scale.x = 1
     this.startPanelBG.scale.y = 1
@@ -554,7 +554,12 @@ export default class extends Phaser.State {
 
     startTween1.chain(startTween2)
     startTween1.start()
-    //this.add.tween(this.startPanel).to({ alpha: 1 }, 1000, 'Linear', true, 250).yoyo(true).loop(true)
+  }
+
+  // Create Bonus 2 items from map objects
+  bonus2Builder () {
+    this.bonus2Group = this.add.physicsGroup()
+    this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.name, null, true, false, this.bonus2Group) // step 2
   }
 
   updateScore () {
@@ -601,7 +606,9 @@ export default class extends Phaser.State {
     this.playerGroup = this.add.group()
     this.playerBuilder()
     this.tunnelGroup = this.add.group()
-    this.tileMap.createFromTiles(5, 5, null, this.mapLayer, this.tunnelGroup)
+    //this.tileMap.createFromTiles(2, 2, null, this.mapLayer, this.tunnelGroup)
+
+    this.bonus2Builder()
     this.scorePanelBuilder()
     this.scoreText()
     this.readyPlayerOne()
