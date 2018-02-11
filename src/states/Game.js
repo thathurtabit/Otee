@@ -23,7 +23,9 @@ export default class extends Phaser.State {
     }
     this.objects = {
       layer: 'otee-objects-layer',
-      spritesheet: 'objects'
+      spritesheet: 'objects',
+      width: 25,
+      height: 25
     }
     this.panel = {
       bgCol: 0xffd670,
@@ -361,6 +363,55 @@ export default class extends Phaser.State {
     }
   }
 
+  // Handle Object Collision
+  handleObjectCollision (player, object) {
+    let name = object.name
+    let text
+    let playerSpeed = this.gameRules.heroSpeedCurrent
+    let bonusPoints = 0
+
+    switch (name) {
+      case 'bonus1':
+        text = '+50 POINTS!'
+        bonusPoints = 50
+        break
+      case 2:
+        text = 'SLOW DOWN'
+        playerSpeed = 100
+        break
+      case 3:
+        text = 'SPEED UP'
+        playerSpeed = 220
+        break
+      case 'bonus2':
+        text = '+100 POINTS!'
+        bonusPoints = 100
+        break
+      default:
+        break
+    }
+
+    this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    // Add bonus to total
+    this.bonusPoints += bonusPoints
+
+    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.pointInfo.lifespan = 400
+
+    this.gameRules.heroSpeedCurrent = playerSpeed
+
+    object.kill()
+
+    // Tiles to be reset for each death go here
+    if (name === 'slow' || name === 'fast') {
+      // Add the touched tile to an array
+      this.touchableTiles.push(object)
+    } else {
+      // Else end of game reset tiles go here
+      this.specialTouchableTiles.push(object)
+    }
+  }
+
   handleGameInPlay () {
     this.startInfo.kill()
     // if it bleeds we can kill it
@@ -381,6 +432,10 @@ export default class extends Phaser.State {
     this.physics.arcade.collide(this.player, this.mapLayer, this.handleLossOfLife, null, this)
     // When the player hits the edge of the screen
     this.player.events.onOutOfBounds.add(this.handleLossOfLife, this)
+
+    // When player overlaps objects
+    this.physics.arcade.overlap(this.player, this.bonus1Group, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.player, this.bonus2Group, this.handleObjectCollision, null, this)
 
     // If player is off screen
     if (this.player.y <= this.game.camera.y + (this.playerSize / 2)) {
@@ -557,26 +612,41 @@ export default class extends Phaser.State {
   }
 
   // Create Bonus 2 items from map objects
-  bonus1Builder () {
-    this.bonus1Group = this.add.physicsGroup()
+  OneUpBuilder () {
+    this.OneUpGroup = this.add.physicsGroup()
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
-    this.tileMap.createFromObjects(this.objects.layer, 'bonus1', this.objects.spritesheet, 0, true, false, this.bonus1Group)
-
-    this.bonus1Group.forEach((item) => {
-      item.body.immovable = true
-    })
+    this.tileMap.createFromObjects(this.objects.layer, '1up', this.objects.spritesheet, 4, true, false, this.OneUpGroup)
   }
 
   // Create Bonus 2 items from map objects
-  bonus2Builder () {
-    this.bonus2Group = this.add.physicsGroup()
-
+  bonus1Builder () {
+    this.bonus1Group = this.add.physicsGroup()
+    console.log(this.bonus1Group)
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
-    this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.spritesheet, 3, true, false, this.bonus2Group)
+    this.tileMap.createFromObjects(this.objects.layer, 'bonus1', this.objects.spritesheet, 0, true, false, this.bonus1Group)
+  }
 
-    this.bonus2Group.forEach((item) => {
-      item.body.immovable = true
-    })
+  // // Create Bonus 2 items from map objects
+  // bonus2Builder () {
+  //   this.bonus2Group = this.add.physicsGroup()
+
+  //   // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+  //   this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.spritesheet, 3, true, false, this.bonus2Group)
+
+  //   this.bonus2Group.forEach((item) => {
+  //     item.body.immovable = true
+  //     this.add.tween(item).to({ 'alpha': 0.8 }, 1000, Phaser.Easing.Circular.InOut, 0, 1000).yoyo(true).loop(true)
+  //   })
+  // }
+
+  // DRY object builder
+  objectBuilder (group, sprite, spriteFrame) {
+    console.log(group, sprite, spriteFrame)
+    group = this.add.physicsGroup()
+    return (
+      // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+      this.tileMap.createFromObjects(this.objects.layer, sprite, this.objects.spritesheet, spriteFrame, true, false, group)
+    )
   }
 
   updateScore () {
@@ -623,10 +693,15 @@ export default class extends Phaser.State {
     this.playerGroup = this.add.group()
     this.playerBuilder()
     this.tunnelGroup = this.add.group()
-    //this.tileMap.createFromTiles(2, 2, null, this.mapLayer, this.tunnelGroup)
 
+    this.oneUpGroup = this.add.group()
+    this.bonus1Group = this.add.group()
+    this.bonus2Group = this.add.group()
+
+    this.objectBuilder(this.oneUpGroup, '1up', 4)
     this.bonus1Builder()
-    this.bonus2Builder()
+    this.objectBuilder(this.bonus2Group, 'bonus2', 3)
+
     this.scorePanelBuilder()
     this.scoreText()
     this.readyPlayerOne()
