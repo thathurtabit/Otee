@@ -23,7 +23,7 @@ export default class extends Phaser.State {
     }
     this.objects = {
       layer: 'otee-objects-layer',
-      name: 'otee-objects'
+      spritesheet: 'objects'
     }
     this.panel = {
       bgCol: 0xffd670,
@@ -62,7 +62,7 @@ export default class extends Phaser.State {
   init () {}
   preload () {
     this.load.image('blocks', 'assets/images/tiles.png')
-    this.load.image('objects', 'assets/images/objects.png')
+    this.load.spritesheet('objects', 'assets/images/objects.png', 25, 25)
     this.load.tilemap('map1', 'assets/data/otee-map-1.json', null, Phaser.Tilemap.TILED_JSON)
   }
 
@@ -557,9 +557,26 @@ export default class extends Phaser.State {
   }
 
   // Create Bonus 2 items from map objects
+  bonus1Builder () {
+    this.bonus1Group = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'bonus1', this.objects.spritesheet, 0, true, false, this.bonus1Group)
+
+    this.bonus1Group.forEach((item) => {
+      item.body.immovable = true
+    })
+  }
+
+  // Create Bonus 2 items from map objects
   bonus2Builder () {
     this.bonus2Group = this.add.physicsGroup()
-    this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.name, null, true, false, this.bonus2Group) // step 2
+
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.spritesheet, 3, true, false, this.bonus2Group)
+
+    this.bonus2Group.forEach((item) => {
+      item.body.immovable = true
+    })
   }
 
   updateScore () {
@@ -608,6 +625,7 @@ export default class extends Phaser.State {
     this.tunnelGroup = this.add.group()
     //this.tileMap.createFromTiles(2, 2, null, this.mapLayer, this.tunnelGroup)
 
+    this.bonus1Builder()
     this.bonus2Builder()
     this.scorePanelBuilder()
     this.scoreText()

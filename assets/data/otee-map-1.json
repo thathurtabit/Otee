@@ -39,6 +39,18 @@
                  "width":25,
                  "x":370,
                  "y":306
+                }, 
+                {
+                 "gid":5,
+                 "height":25,
+                 "id":8,
+                 "name":"bonus1",
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":25,
+                 "x":191,
+                 "y":260
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -46,7 +58,7 @@
          "x":0,
          "y":0
         }],
- "nextobjectid":5,
+ "nextobjectid":9,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.1.1",
