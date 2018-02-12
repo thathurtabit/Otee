@@ -17,6 +17,8 @@ export default class extends Phaser.State {
     this.playerSize = 14
     this.touchableTiles = []
     this.specialTouchableTiles = []
+    this.touchableObjects = []
+    this.specialTouchableObjects = []
     this.tile = {
       width: 45,
       height: 45
@@ -81,6 +83,10 @@ export default class extends Phaser.State {
     //  A Layer is effectively like a Phaser.Sprite, so is added to the display list.
     this.mapLayer = this.tileMap.createLayer('otee-tile-layer')
 
+    // Required to move camera it seems
+    this.mapLayer.resizeWorld()
+
+    // Allow objects to be touched
     this.objectsGroup = this.add.physicsGroup()
 
     // See handleTileCollision
@@ -146,28 +152,43 @@ export default class extends Phaser.State {
     }
   }
 
-  // Reset touched tiles
-  resetTouchableTiles () {
+  // Reset touched items (tiles & objects)
+  resetTouchableItems () {
     // Convert alpha back to 1
     this.touchableTiles.forEach((touchedTile) => {
       touchedTile.alpha = 1
     })
     // Refresh map
     this.mapLayer.dirty = true
+
+    // Revive objects
+    this.touchableObjects.forEach((touchedObject) => {
+      touchedObject.revive()
+    })
+
     // Clear touched tiles array
     this.touchableTiles = []
+    // Clear touched objects array
+    this.touchableObjects = []
   }
 
-  // Reset SPECIAL touched tiles - reset only on GAME OVER
-  resetSpecialTouchableTiles () {
+  // Reset SPECIAL touched items - reset only on GAME OVER (tiles & objects)
+  resetSpecialTouchableItems () {
     // Convert alpha back to 1
     this.specialTouchableTiles.forEach((touchedTile) => {
       touchedTile.alpha = 1
+    })
+
+    // Revive objects
+    this.specialTouchableObjects.forEach((touchedObject) => {
+      touchedObject.revive()
     })
     // Refresh map
     this.mapLayer.dirty = true
     // Clear touched tiles array
     this.specialTouchableTiles = []
+    // Clear touched objects array
+    this.specialTouchableObjects = []
   }
 
   reversePlayer (sprite, tile) {
@@ -177,19 +198,19 @@ export default class extends Phaser.State {
     this.touchableTiles.push(tile)
   }
 
-  handle1Up (sprite, tile) {
-    // When we hit the tile, do things only once...
-    if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, '1 UP!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#fdd971', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
-      this.playerStart.lives += 1
-    }
-    this.pointInfo.lifespan = 400
-    tile.alpha = 0.2
-    this.mapLayer.dirty = true
-    // Add the SPECIAL touched tile to an array - reset only on GAME OVER
-    this.specialTouchableTiles.push(tile)
-  }
+  // handle1Up (sprite, tile) {
+  //   // When we hit the tile, do things only once...
+  //   if (tile.alpha === 1) {
+  //     this.pointInfo = this.add.text(this.player.x, this.player.y, '1 UP!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#fdd971', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+  //     this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+  //     this.playerStart.lives += 1
+  //   }
+  //   this.pointInfo.lifespan = 400
+  //   tile.alpha = 0.2
+  //   this.mapLayer.dirty = true
+  //   // Add the SPECIAL touched tile to an array - reset only on GAME OVER
+  //   this.specialTouchableTiles.push(tile)
+  // }
 
   handleCheckpoint (sprite, tile) {
     // When we hit the tile, do things only once...
@@ -368,17 +389,23 @@ export default class extends Phaser.State {
         text = '+50 POINTS!'
         bonusPoints = 50
         break
-      case '1up':
-        text = '1 UP!'
-        this.playerStart.lives += 1
-        break
-      case 3:
-        text = 'SPEED UP'
-        break
       case 'bonus2':
         text = '+100 POINTS!'
         bonusPoints = 100
         break
+      case '1up':
+        text = '1 UP!'
+        this.playerStart.lives += 1
+        break
+      case 'fast':
+        text = 'SPEED UP'
+        playerSpeed = 200
+        break
+      case 'slow':
+        text = 'SLOW DOWN'
+        playerSpeed = 100
+        break
+
       default:
         break
     }
@@ -397,10 +424,10 @@ export default class extends Phaser.State {
     // Tiles to be reset for each death go here
     if (name === 'slow' || name === 'fast') {
       // Add the touched tile to an array
-      this.touchableTiles.push(object)
+      this.touchableObjects.push(object)
     } else {
       // Else end of game reset tiles go here
-      this.specialTouchableTiles.push(object)
+      this.specialTouchableObjects.push(object)
     }
   }
 
@@ -429,6 +456,8 @@ export default class extends Phaser.State {
     this.physics.arcade.overlap(this.player, this.bonus1Group, this.handleObjectCollision, null, this)
     this.physics.arcade.overlap(this.player, this.bonus2Group, this.handleObjectCollision, null, this)
     this.physics.arcade.overlap(this.player, this.oneUpGroup, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.player, this.slowDownGroup, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.player, this.speedUpGroup, this.handleObjectCollision, null, this)
 
     // If player is off screen
     if (this.player.y <= this.game.camera.y + (this.playerSize / 2)) {
@@ -450,7 +479,7 @@ export default class extends Phaser.State {
     this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
     this.gameRules.reversePlayer = false
     this.playerColor.current = this.playerColor.default
-    this.resetTouchableTiles()
+    this.resetTouchableItems()
 
     // If it's game over...
     if (this.gameOver) {
@@ -461,7 +490,7 @@ export default class extends Phaser.State {
       this.playerStart.x = 198 // TODO get rid of hard-value
       this.playerStart.y = 50 // TODO get rid of hard-value
       // Reset special tiles
-      this.resetSpecialTouchableTiles()
+      this.resetSpecialTouchableItems()
       // Put player in position
       this.readyPlayerOne()
     // Else, do things differently
@@ -604,7 +633,7 @@ export default class extends Phaser.State {
     startTween1.start()
   }
 
-  // Create Bonus 2 items from map objects
+  // Create 1 Up items from map objects
   oneUpBuilder () {
     this.oneUpGroup = this.add.physicsGroup()
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
@@ -623,6 +652,20 @@ export default class extends Phaser.State {
     this.bonus2Group = this.add.physicsGroup()
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
     this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.spritesheet, 3, true, false, this.bonus2Group)
+  }
+
+  // Create Slow Down items from map objects
+  slowDownBuilder () {
+    this.slowDownGroup = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'slow', this.objects.spritesheet, 1, true, false, this.slowDownGroup)
+  }
+
+  // Create Speed Up items from map objects
+  speedUpBuilder () {
+    this.speedUpGroup = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'fast', this.objects.spritesheet, 2, true, false, this.speedUpGroup)
   }
 
   updateScore () {
@@ -677,6 +720,8 @@ export default class extends Phaser.State {
     this.bonus1Builder()
     this.bonus2Builder()
     this.oneUpBuilder()
+    this.slowDownBuilder()
+    this.speedUpBuilder()
 
     this.scorePanelBuilder()
     this.scoreText()
@@ -715,7 +760,7 @@ export default class extends Phaser.State {
 
   render () {
     if (__DEV__) {
-      //this.game.debug.cameraInfo(this.camera, 32, 32)
+      // this.game.debug.cameraInfo(this.camera, 32, 32)
       // this.game.debug.spriteCoords(this.player, 32, 500)
     }
   }
