@@ -115,7 +115,7 @@ export default class extends Phaser.State {
         playerSpeed = 100
         break
       case 2:
-        text = 'DARK!'
+        tileAlpha = 0.9
         break
       case 3:
         tileAlpha = 0.9
