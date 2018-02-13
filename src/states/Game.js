@@ -53,7 +53,7 @@ export default class extends Phaser.State {
     }
     this.gameRules = {
       gameSpeed: 1,
-      heroSpeedDefault: 160,
+      heroSpeedDefault: 180,
       heroSpeedFast: 200,
       heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
@@ -91,12 +91,12 @@ export default class extends Phaser.State {
 
     // See handleTileCollision
     // this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
-    // this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
+    this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
     // this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
     // this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(6, this.reversePlayer, this)
-    this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
+    //this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
+    this.tileMap.setTileIndexCallback(3, this.reversePlayer, this)
+    //this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
 
     // Collision
     this.tileMap.setCollisionByExclusion([2, 4])
@@ -118,7 +118,8 @@ export default class extends Phaser.State {
         tileAlpha = 0.9
         break
       case 3:
-        tileAlpha = 0.9
+        text = 'FLIP REVERSE'
+        tileAlpha = 1
         break
       case 4:
         tileAlpha = 0.9
@@ -129,7 +130,7 @@ export default class extends Phaser.State {
 
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.9)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       // Add bonus to total
       this.bonusPoints += bonusPoints
     }
@@ -419,13 +420,12 @@ export default class extends Phaser.State {
 
     this.gameRules.heroSpeedCurrent = playerSpeed
 
-    object.kill()
-
     // Tiles to be reset for each death go here
     if (name === 'slow' || name === 'fast') {
       // Add the touched tile to an array
       this.touchableObjects.push(object)
     } else {
+      object.kill()
       // Else end of game reset tiles go here
       this.specialTouchableObjects.push(object)
     }
@@ -458,6 +458,7 @@ export default class extends Phaser.State {
     this.physics.arcade.overlap(this.player, this.oneUpGroup, this.handleObjectCollision, null, this)
     this.physics.arcade.overlap(this.player, this.slowDownGroup, this.handleObjectCollision, null, this)
     this.physics.arcade.overlap(this.player, this.speedUpGroup, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.player, this.smallWallGroup, this.handleLossOfLife, null, this)
 
     // If player is off screen
     if (this.player.y <= this.game.camera.y + (this.playerSize / 2)) {
@@ -471,7 +472,7 @@ export default class extends Phaser.State {
 
     this.trail.destroy()
     this.score = 0
-    this.scoreText.text = `Score: ${this.score}`
+    this.scoreText.text = `SCORE: ${this.score}`
 
     this.direction = 'down'
     this.endGame = false
@@ -640,6 +641,13 @@ export default class extends Phaser.State {
     this.tileMap.createFromObjects(this.objects.layer, '1up', this.objects.spritesheet, 4, true, false, this.oneUpGroup)
   }
 
+  // Create Small Walls items from map objects
+  smallWallBuilder () {
+    this.smallWallGroup = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'smallWall', this.objects.spritesheet, 5, true, false, this.smallWallGroup)
+  }
+
   // Create Bonus 2 items from map objects
   bonus1Builder () {
     this.bonus1Group = this.add.physicsGroup()
@@ -657,6 +665,7 @@ export default class extends Phaser.State {
   // Create Slow Down items from map objects
   slowDownBuilder () {
     this.slowDownGroup = this.add.physicsGroup()
+    this.slowDownGroup.alpha = 0.5
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
     this.tileMap.createFromObjects(this.objects.layer, 'slow', this.objects.spritesheet, 1, true, false, this.slowDownGroup)
   }
@@ -717,6 +726,7 @@ export default class extends Phaser.State {
     this.bonus1Group = this.add.group()
     this.bonus2Group = this.add.group()
 
+    this.smallWallBuilder()
     this.bonus1Builder()
     this.bonus2Builder()
     this.oneUpBuilder()
