@@ -96,7 +96,7 @@ export default class extends Phaser.State {
     // this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
     //this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(3, this.reversePlayer, this)
-    //this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
+    this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
 
     // Collision
     this.tileMap.setCollisionByExclusion([2, 4])
