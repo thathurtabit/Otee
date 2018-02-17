@@ -52,6 +52,7 @@ export default class extends Phaser.State {
       lives: 3,
       pivot: 6
     }
+    this.speedTimerInMotion = false
     this.gameRules = {
       gameSpeed: 1,
       heroSpeedDefault: 180,
@@ -59,7 +60,8 @@ export default class extends Phaser.State {
       heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
       triggerCameraHeight: 250,
-      reversehero: false
+      reversehero: false,
+      speedTimer: 3
     }
     this.bonusPoints = 0
   }
@@ -453,6 +455,9 @@ export default class extends Phaser.State {
 
     // Tiles to be reset for each death go here
     if (name === 'slow' || name === 'fast') {
+      if (!this.speedTimerInMotion) {
+        this.handleSpeedTimer()
+      }
       // Add the touched tile to an array
       this.touchableObjects.push(object)
     } else {
@@ -460,6 +465,26 @@ export default class extends Phaser.State {
       // Else end of game reset tiles go here
       this.specialTouchableObjects.push(object)
     }
+  }
+
+  handleSpeedTimer () {
+    // Toggle speed timer allowence
+    this.speedTimerInMotion = !this.speedTimerInMotion
+
+    // Set a Timed Event for turning off speed changes
+    this.time.events.add(Phaser.Timer.SECOND * this.gameRules.speedTimer, () => {
+      this.gameRules.heroSpeedCurrent = 180
+      this.timerInfo.kill()
+    }, this)
+
+    let timerText = this.gameRules.speedTimer
+
+    setInterval(() => {
+      return (timerText -= 1)
+    }, Phaser.Timer.SECOND)
+
+    this.timerInfo = this.add.text(this.hero.x, this.hero.y, timerText, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+
   }
 
   handleGameInPlay () {
@@ -527,20 +552,20 @@ export default class extends Phaser.State {
       // Reset special tiles
       this.resetSpecialTouchableItems()
       // Put hero in position
-      this.readyheroOne()
+      this.readyHeroOne()
     // Else, do things differently
     } else {
       this.hero.x = this.heroStart.x
       this.hero.y = this.heroStart.y
       this.camera.y = this.heroStart.y - (this.camera.height / 2 - 100)
       // Put hero in position
-      this.readyheroOne()
+      this.readyHeroOne()
     }
     // Reset gameOver value (after Game over happens)
     this.gameOver = false
   }
 
-  readyheroOne () {
+  readyHeroOne () {
     // Move hero into start position
     this.hero.x = this.heroStart.x
     this.hero.y = this.heroStart.y
@@ -790,7 +815,7 @@ export default class extends Phaser.State {
 
     this.scorePanelBuilder()
     this.scoreText()
-    this.readyheroOne()
+    this.readyHeroOne()
   }
 
   update () {
