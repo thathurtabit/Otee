@@ -63,6 +63,8 @@ export default class extends Phaser.State {
       reversehero: false,
       speedTimer: 3
     }
+    this.textStyle = { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
+    this.textOverlayStyle = { font: this.style.font, fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
     this.bonusPoints = 0
   }
 
@@ -93,11 +95,7 @@ export default class extends Phaser.State {
     this.objectsGroup = this.add.physicsGroup()
 
     // See handleTileCollision
-    // this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
-    // this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
-    // this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
-    //this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(3, this.reversehero, this)
     this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
 
@@ -109,7 +107,6 @@ export default class extends Phaser.State {
     let index = tile.index
     let text
     let heroSpeed = this.gameRules.heroSpeedCurrent
-    let bonusPoints = 0
     let tileAlpha = 0.3
 
     switch (index) {
@@ -131,15 +128,7 @@ export default class extends Phaser.State {
         break
     }
 
-    // When we hit the tile, do things only once...
-    if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.hero.x, this.hero.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.9)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      // Add bonus to total
-      this.bonusPoints += bonusPoints
-    }
-
-    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.pointInfo.lifespan = 400
+    this.showPlayerText(text, 400)
 
     // Change opacity down
     tile.alpha = tileAlpha
@@ -274,7 +263,7 @@ export default class extends Phaser.State {
 
     let scoreBg = this.add.graphics(0, 0)
     scoreBg.beginFill(this.panel.bgCol, 1)
-    scoreBg.drawRect(0, 0, this.camera.width, 30)
+    scoreBg.drawRect(0, 0, this.camera.width, 35)
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
@@ -432,11 +421,9 @@ export default class extends Phaser.State {
         this.heroStart.lives += 1
         break
       case 'fast':
-        text = 'SPEED UP'
         heroSpeed = 200
         break
       case 'slow':
-        text = 'SLOW DOWN'
         heroSpeed = 100
         break
 
@@ -444,19 +431,18 @@ export default class extends Phaser.State {
         break
     }
 
-    this.pointInfo = this.add.text(this.hero.x, this.hero.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    // Handle the text update
+    this.showPlayerText(text, 400)
+
     // Add bonus to total
     this.bonusPoints += bonusPoints
-
-    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.pointInfo.lifespan = 400
 
     this.gameRules.heroSpeedCurrent = heroSpeed
 
     // Tiles to be reset for each death go here
     if (name === 'slow' || name === 'fast') {
       if (!this.speedTimerInMotion) {
-        this.handleSpeedTimer()
+        this.handleSpeedTimer(name)
       }
       // Add the touched tile to an array
       this.touchableObjects.push(object)
@@ -467,24 +453,60 @@ export default class extends Phaser.State {
     }
   }
 
-  handleSpeedTimer () {
+  // Generic handler for all hover text
+  showPlayerText (textToDisplay, lifespan) {
+    this.textInfo = this.add.text(this.hero.x, this.hero.y, textToDisplay, this.textStyle)
+    this.textInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.textInfo.lifespan = lifespan
+  }
+
+  // Generic handler for all hover text
+  showPlayerTextFollow (textToDisplay, lifespan) {
+    this.textInfoFollow = this.add.text(0, 0, textToDisplay, this.textOverlayStyle)
+    this.textInfoFollow.anchor.setTo(0.5) // set anchor to middle / center
+    this.textInfoFollow.lifespan = lifespan
+    this.textInfoFollow.x = this.centerX
+    this.textInfoFollow.y = this.centerY
+    this.textInfoFollow.fixedToCamera = true
+  }
+
+  handleSpeedTimer (speedType) {
     // Toggle speed timer allowence
     this.speedTimerInMotion = !this.speedTimerInMotion
 
-    // Set a Timed Event for turning off speed changes
+    let speedText
+
+    if (speedType === 'fast') {
+      speedText = `Speeded for: `
+    } else if (speedType === 'slow') {
+      speedText = `Slowed for:  `
+    }
+
+    // 'setTimeout' event for turning off player speed changes
     this.time.events.add(Phaser.Timer.SECOND * this.gameRules.speedTimer, () => {
       this.gameRules.heroSpeedCurrent = 180
-      this.timerInfo.kill()
     }, this)
 
-    let timerText = this.gameRules.speedTimer
+    // Set initial counter length
+    let totalTime = Phaser.Timer.SECOND * (this.gameRules.speedTimer)
 
-    setInterval(() => {
-      return (timerText -= 1)
-    }, Phaser.Timer.SECOND)
+    // Looped timer
+    const updateCounter = () => {
+      totalTime -= Phaser.Timer.SECOND
 
-    this.timerInfo = this.add.text(this.hero.x, this.hero.y, timerText, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      // Show text
+      this.showPlayerTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
 
+      // If timed out, remove counter
+      if (totalTime <= Phaser.Timer.SECOND) this.time.events.remove(textTimer)
+    }
+
+    // On collide, show this first, (to be replaced in the loop)
+    this.showPlayerTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
+
+    // https://phaser.io/examples/v2/time/custom-timer
+    // Create looped timer
+    let textTimer = this.time.events.loop(Phaser.Timer.SECOND, updateCounter, this)
   }
 
   handleGameInPlay () {
@@ -545,7 +567,7 @@ export default class extends Phaser.State {
     if (this.gameOver) {
       // Reset
       this.heroStart.lives = 3
-      this.livesLeft.text = `Lives: ${this.heroStart.lives}`
+      this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
       this.camera.y = 0
       this.heroStart.x = 198 // TODO get rid of hard-value
       this.heroStart.y = 50 // TODO get rid of hard-value
@@ -594,13 +616,11 @@ export default class extends Phaser.State {
     this.direction = null
     this.gameInPlay = false
     this.heroStart.inPosition = false
+    this.speedTimerInMotion = !this.speedTimerInMotion
 
-    this.livesLeft.text = `Lives: ${this.heroStart.lives}`
+    this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
 
-    this.heroInfo = this.add.text(this.hero.x + 7, this.hero.y - 15, 'OUCH', { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.heroInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Kill off after this time...
-    this.heroInfo.lifespan = 1000
+    this.showPlayerText('OUCH', 1000)
 
     //  Reset the heros velocity (keyboardEvents)
     this.hero.body.velocity.x = 0
@@ -753,7 +773,6 @@ export default class extends Phaser.State {
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
     this.tileMap.createFromObjects(this.objects.layer, 'badguy', this.objects.spritesheet, 6, true, false, this.badGuyGroup)
     this.badGuyGroup.children.map(badguy => (badguy.body.enable = true))
-    console.log(this.badGuyGroup.children)
   }
 
   updateScore () {
@@ -764,9 +783,9 @@ export default class extends Phaser.State {
   }
 
   scoreText () {
-    this.scoreText = this.add.text(10, 8, 'SCORE: 0', {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
-    this.livesLeft = this.add.text(178, 8, `LIVES: ${this.heroStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
-    this.highScoreText = this.add.text(0, 8, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
+    this.scoreText = this.add.text(10, 10, 'SCORE: 0', {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
+    this.livesLeft = this.add.text(178, 10, `LIVES: ${this.heroStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
+    this.highScoreText = this.add.text(0, 10, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
     this.scorePanel.add(this.scoreText)
