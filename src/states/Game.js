@@ -14,7 +14,7 @@ export default class extends Phaser.State {
     this.gameOver = false
     this.direction = 'down'
     this.gameStartText = this.gameStartText
-    this.heroSize = 14
+    this.heroSize = 16
     this.touchableTiles = []
     this.specialTouchableTiles = []
     this.touchableObjects = []
@@ -46,8 +46,8 @@ export default class extends Phaser.State {
       trail: 0xFF7F66
     }
     this.heroStart = {
-      x: 198,
-      y: 50,
+      x: 196,
+      y: 55,
       inPosition: false,
       lives: 3,
       pivot: 6
@@ -60,7 +60,7 @@ export default class extends Phaser.State {
       heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
       triggerCameraHeight: 250,
-      reversehero: false,
+      reverseHero: false,
       speedTimer: 3
     }
     this.textStyle = { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
@@ -96,7 +96,7 @@ export default class extends Phaser.State {
 
     // See handleTileCollision
     this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(3, this.reversehero, this)
+    this.tileMap.setTileIndexCallback(3, this.reverseHero, this)
     this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
 
     // Collision
@@ -184,8 +184,8 @@ export default class extends Phaser.State {
     this.specialTouchableObjects = []
   }
 
-  reversehero (sprite, tile) {
-    this.gameRules.reversehero = true
+  reverseHero (sprite, tile) {
+    this.gameRules.reverseHero = true
     tile.alpha = 0.2
     // Add the touched tile to an array
     this.touchableTiles.push(tile)
@@ -194,10 +194,8 @@ export default class extends Phaser.State {
   handleCheckpoint (sprite, tile) {
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.hero.x, this.hero.y, 'CHECKPOINT!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#62e79e', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
+      this.showPlayerText('CHECKPOINT!', 1000)
     }
-    this.pointInfo.lifespan = 400
     tile.alpha = 0.2
     this.mapLayer.dirty = true
 
@@ -210,8 +208,8 @@ export default class extends Phaser.State {
 
   // Store Hero History
   storeHeroHistory (xPos, yPos) {
-    let x = xPos + (this.heroSize / 2) - 2
-    let y = yPos + (this.heroSize / 2) - 2
+    let x = xPos + (this.heroSize / 2) - 1
+    let y = yPos + (this.heroSize / 2) - 1
 
     this.trail = this.add.graphics(0, 0)
     this.trail.beginFill(this.heroColor.trail, 1)
@@ -232,7 +230,7 @@ export default class extends Phaser.State {
     this.hero = this.add.sprite(this.heroStart.x, this.heroStart.y)
     this.hero.width = this.heroSize
     this.hero.height = this.heroSize
-    this.hero.addChild(hero)
+    this.hero.addChild(hero)    
 
     let heroEye = this.add.graphics(0, 0)
     heroEye.beginFill('0xFFFFFF', 1)
@@ -241,7 +239,7 @@ export default class extends Phaser.State {
     // Create the eye child
     this.heroEye = this.hero.addChild(heroEye)
 
-    //  We need to enable physics on the hero
+    // We need to enable physics on the hero
     this.physics.arcade.enable(this.hero)
 
     this.hero.body.collideWorldBounds = true
@@ -250,8 +248,6 @@ export default class extends Phaser.State {
     if (this.hero.inCamera === false && this.gameInPlay) {
       this.handleLossOfLife()
     }
-
-    this.add.tween(this.hero).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 1000)
 
     this.heroGroup.add(this.hero)
   }
@@ -264,6 +260,7 @@ export default class extends Phaser.State {
     let scoreBg = this.add.graphics(0, 0)
     scoreBg.beginFill(this.panel.bgCol, 1)
     scoreBg.drawRect(0, 0, this.camera.width, 35)
+    scoreBg.alpha = 0.95
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
@@ -275,7 +272,7 @@ export default class extends Phaser.State {
 
     // Reset the reversing back to normal
     const resetReverse = () => {
-      this.gameRules.reversehero = false
+      this.gameRules.reverseHero = false
     }
 
     //  Reset the heros velocity (keyboardEvents)
@@ -316,7 +313,7 @@ export default class extends Phaser.State {
       this.storeHeroHistory(this.hero.x, this.hero.y)
     }
     // If not reversed, turn normally
-    if (!this.gameRules.reversehero) {
+    if (!this.gameRules.reverseHero) {
       switch (this.direction) {
         case 'left':
           this.hero.body.velocity.x -= this.gameRules.heroSpeedCurrent
@@ -559,7 +556,7 @@ export default class extends Phaser.State {
     this.endGame = false
     this.bonusPoints = 0
     this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
-    this.gameRules.reversehero = false
+    this.gameRules.reverseHero = false
     this.heroColor.current = this.heroColor.default
     this.resetTouchableItems()
 
@@ -569,8 +566,8 @@ export default class extends Phaser.State {
       this.heroStart.lives = 3
       this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
       this.camera.y = 0
-      this.heroStart.x = 198 // TODO get rid of hard-value
-      this.heroStart.y = 50 // TODO get rid of hard-value
+      this.heroStart.x = 196 // TODO get rid of hard-value
+      this.heroStart.y = 55 // TODO get rid of hard-value
       // Reset special tiles
       this.resetSpecialTouchableItems()
       // Put hero in position
@@ -579,7 +576,7 @@ export default class extends Phaser.State {
     } else {
       this.hero.x = this.heroStart.x
       this.hero.y = this.heroStart.y
-      this.camera.y = this.heroStart.y - (this.camera.height / 2 - 100)
+      this.camera.y = this.heroStart.y - (this.camera.height / 2 - 300)
       // Put hero in position
       this.readyHeroOne()
     }
@@ -599,7 +596,9 @@ export default class extends Phaser.State {
     })
 
     // Tween hero in before starting...
-    let tweenheroIn = this.add.tween(this.hero).from({y: 0}, 500, Phaser.Easing.Back.Out, true, 500)
+    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 1000, Phaser.Easing.Elastic.Out, true, 1000)
+    this.add.tween(this.hero.pivot).from({x: 0, y: 20}, 1000, Phaser.Easing.Elastic.Out, true, 1000)
+
     tweenheroIn.onComplete.add(() => {
       // hero needs to be in position nefore starting
       this.heroStart.inPosition = true
@@ -616,7 +615,7 @@ export default class extends Phaser.State {
     this.direction = null
     this.gameInPlay = false
     this.heroStart.inPosition = false
-    this.speedTimerInMotion = !this.speedTimerInMotion
+    this.speedTimerInMotion = !this.speedTimerInMotion    
 
     this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
 
@@ -874,6 +873,7 @@ export default class extends Phaser.State {
     if (__DEV__) {
       // this.game.debug.cameraInfo(this.camera, 32, 32)
       // this.game.debug.spriteCoords(this.hero, 32, 500)
+      //this.game.debug.body(this.hero)
     }
   }
 }
