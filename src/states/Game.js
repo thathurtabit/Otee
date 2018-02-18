@@ -7,24 +7,27 @@ export default class extends Phaser.State {
     this.style = {
       font: 'Raleway'
     }
-    this.player = this.player
-    this.cursors = this.cursors
     this.score = 0
     this.gameInPlay = false
     this.endGame = false
-    this.scoreText = this.scoreText
-    this.tileMap = this.tileMap
-    this.mapLayer = this.mapLayer
     this.getNewStartTime = true
     this.gameOver = false
     this.direction = 'down'
     this.gameStartText = this.gameStartText
-    this.playerSize = 14
+    this.heroSize = 14
     this.touchableTiles = []
     this.specialTouchableTiles = []
+    this.touchableObjects = []
+    this.specialTouchableObjects = []
     this.tile = {
       width: 45,
       height: 45
+    }
+    this.objects = {
+      layer: 'otee-objects-layer',
+      spritesheet: 'objects',
+      width: 25,
+      height: 25
     }
     this.panel = {
       bgCol: 0xffd670,
@@ -35,113 +38,105 @@ export default class extends Phaser.State {
       bgCol: 0x8777f9,
       textCol: '#ffffff'
     }
-    this.playerColor = {
-      current: 0x8777f9,
+    this.heroColor = {
+      current: 0xFF7F66,
       default: 0x8777f9,
       slow: 0xFF0000,
       fast: 0xFFFFFF,
-      trail: 0x8777f9
+      trail: 0xFF7F66
     }
-    this.playerStart = {
+    this.heroStart = {
       x: 198,
       y: 50,
       inPosition: false,
-      lives: 3
+      lives: 3,
+      pivot: 6
     }
+    this.speedTimerInMotion = false
     this.gameRules = {
       gameSpeed: 1,
-      heroSpeedDefault: 160,
+      heroSpeedDefault: 180,
       heroSpeedFast: 200,
       heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
       triggerCameraHeight: 250,
-      reversePlayer: false
+      reversehero: false,
+      speedTimer: 3
     }
+    this.textStyle = { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
+    this.textOverlayStyle = { font: this.style.font, fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
     this.bonusPoints = 0
   }
 
   init () {}
   preload () {
-    this.load.tilemap('map', 'assets/data/phaser-game-tile.csv', null, Phaser.Tilemap.CSV)
     this.load.image('blocks', 'assets/images/tiles.png')
+    this.load.spritesheet('objects', 'assets/images/objects.png', 25, 25)
+    this.load.tilemap('map1', 'assets/data/otee-map-1.json', null, Phaser.Tilemap.TILED_JSON)
   }
 
   // Walls
   wallBuilder () {
-    //  Because we're loading CSV map data we have to specify the tile size here or we can't render it
-    this.tileMap = this.add.tilemap('map', this.tile.width, this.tile.height)
+    this.tileMap = this.add.tilemap('map1')
 
-    //  Add a Tileset image to the map
-    this.tileMap.addTilesetImage('blocks')
+    //  The first parameter is the tileset name, as specified in the Tiled map editor (and in the tilemap json file)
+    //  The second parameter maps this name to the Phaser.Cache key 'blocks'
+    this.tileMap.addTilesetImage('otee-tileset', 'blocks')
+    this.tileMap.addTilesetImage('otee-objects', 'objects')
 
-    // Creates a map layer
-    this.mapLayer = this.tileMap.createLayer(0)
+    //  Creates a layer from the JSON layer in the map data.
+    //  A Layer is effectively like a Phaser.Sprite, so is added to the display list.
+    this.mapLayer = this.tileMap.createLayer('otee-tile-layer')
 
-    //  Resize the world
+    // Required to move camera it seems
     this.mapLayer.resizeWorld()
 
+    // Allow objects to be touched
+    this.objectsGroup = this.add.physicsGroup()
+
     // See handleTileCollision
-    this.tileMap.setTileIndexCallback(1, this.handleTileCollision, this)
     this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(3, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(4, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(5, this.handleTileCollision, this)
-    this.tileMap.setTileIndexCallback(6, this.reversePlayer, this)
-    this.tileMap.setTileIndexCallback(7, this.handle1Up, this)
-    this.tileMap.setTileIndexCallback(8, this.handleCheckpoint, this)
+    this.tileMap.setTileIndexCallback(3, this.reversehero, this)
+    this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this)
 
     // Collision
-    this.tileMap.setCollisionByExclusion([-1, 5])
+    this.tileMap.setCollisionByExclusion([2, 4])
   }
 
   handleTileCollision (sprite, tile) {
     let index = tile.index
     let text
-    let playerSpeed = this.gameRules.heroSpeedCurrent
-    let bonusPoints = 0
+    let heroSpeed = this.gameRules.heroSpeedCurrent
     let tileAlpha = 0.3
 
     switch (index) {
       case 1:
-        text = '+50 POINTS!'
-        bonusPoints = 50
+        text = 'SLOW DOWN'
+        heroSpeed = 100
         break
       case 2:
-        text = 'SLOW DOWN'
-        playerSpeed = 100
+        tileAlpha = 0.9
         break
       case 3:
-        text = 'SPEED UP'
-        playerSpeed = 220
+        text = 'FLIP REVERSE'
+        tileAlpha = 1
         break
       case 4:
-        text = '+100 POINTS!'
-        bonusPoints = 100
-        break
-      case 5:
         tileAlpha = 0.9
         break
       default:
         break
     }
 
-    // When we hit the tile, do things only once...
-    if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, text, { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      // Add bonus to total
-      this.bonusPoints += bonusPoints
-    }
-
-    this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.pointInfo.lifespan = 400
+    this.showPlayerText(text, 400)
 
     // Change opacity down
     tile.alpha = tileAlpha
-    this.gameRules.heroSpeedCurrent = playerSpeed
+    this.gameRules.heroSpeedCurrent = heroSpeed
     this.mapLayer.dirty = true
 
     // Tiles to be reset for each death go here
-    if (index === 5) {
+    if (index === 2) {
       // Add the touched tile to an array
       this.touchableTiles.push(tile)
     } else {
@@ -150,63 +145,64 @@ export default class extends Phaser.State {
     }
   }
 
-  // Reset touched tiles
-  resetTouchableTiles () {
+  // Reset touched items (tiles & objects)
+  resetTouchableItems () {
     // Convert alpha back to 1
     this.touchableTiles.forEach((touchedTile) => {
       touchedTile.alpha = 1
     })
     // Refresh map
     this.mapLayer.dirty = true
+
+    // Revive objects
+    this.touchableObjects.forEach((touchedObject) => {
+      touchedObject.revive()
+    })
+
     // Clear touched tiles array
     this.touchableTiles = []
+    // Clear touched objects array
+    this.touchableObjects = []
   }
 
-  // Reset SPECIAL touched tiles - reset only on GAME OVER
-  resetSpecialTouchableTiles () {
+  // Reset SPECIAL touched items - reset only on GAME OVER (tiles & objects)
+  resetSpecialTouchableItems () {
     // Convert alpha back to 1
     this.specialTouchableTiles.forEach((touchedTile) => {
       touchedTile.alpha = 1
+    })
+
+    // Revive objects
+    this.specialTouchableObjects.forEach((touchedObject) => {
+      touchedObject.revive()
     })
     // Refresh map
     this.mapLayer.dirty = true
     // Clear touched tiles array
     this.specialTouchableTiles = []
+    // Clear touched objects array
+    this.specialTouchableObjects = []
   }
 
-  reversePlayer (sprite, tile) {
-    this.gameRules.reversePlayer = true
+  reversehero (sprite, tile) {
+    this.gameRules.reversehero = true
     tile.alpha = 0.2
     // Add the touched tile to an array
     this.touchableTiles.push(tile)
   }
 
-  handle1Up (sprite, tile) {
-    // When we hit the tile, do things only once...
-    if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, '1 UP!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#fdd971', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-      this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
-      this.playerStart.lives += 1
-    }
-    this.pointInfo.lifespan = 400
-    tile.alpha = 0.2
-    this.mapLayer.dirty = true
-    // Add the SPECIAL touched tile to an array - reset only on GAME OVER
-    this.specialTouchableTiles.push(tile)
-  }
-
   handleCheckpoint (sprite, tile) {
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.pointInfo = this.add.text(this.player.x, this.player.y, 'CHECKPOINT!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#62e79e', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.pointInfo = this.add.text(this.hero.x, this.hero.y, 'CHECKPOINT!', { font: this.style.font, fontSize: '12px', fill: '#333', backgroundColor: '#62e79e', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.pointInfo.anchor.setTo(0.5) // set anchor to middle / center
     }
     this.pointInfo.lifespan = 400
     tile.alpha = 0.2
     this.mapLayer.dirty = true
 
-    this.playerStart.x = (tile.worldX + this.tile.width / 2) - this.playerSize / 2
-    this.playerStart.y = (tile.worldY + this.tile.height / 2) - this.playerSize / 2
+    this.heroStart.x = (tile.worldX + this.tile.width / 2) - this.heroSize / 2
+    this.heroStart.y = (tile.worldY + this.tile.height / 2) - this.heroSize / 2
 
     // Add the SPECIAL touched tile to an array - reset only on GAME OVER
     this.specialTouchableTiles.push(tile)
@@ -214,54 +210,60 @@ export default class extends Phaser.State {
 
   // Store Hero History
   storeHeroHistory (xPos, yPos) {
-    let x = xPos + (this.playerSize / 2) - 3
-    let y = yPos + (this.playerSize / 2) - 3
+    let x = xPos + (this.heroSize / 2) - 2
+    let y = yPos + (this.heroSize / 2) - 2
 
     this.trail = this.add.graphics(0, 0)
-    this.trail.beginFill(this.playerColor.trail, 1)
-    this.trail.drawRect(x, y, 4, 4)
+    this.trail.beginFill(this.heroColor.trail, 1)
+    this.trail.drawRect(x, y, 2, 2)
     // Kill off after this time...
     this.trail.lifespan = 500
 
-    this.playerGroup.add(this.trail)
+    this.heroGroup.add(this.trail)
   }
 
-  // Player
-  playerBuilder () {
+  // Hero
+  heroBuilder () {
     let hero = this.add.graphics(0, 0)
-    hero.beginFill(this.playerColor.current, 1)
-    hero.drawCircle(this.playerSize, this.playerSize, this.playerSize * 2)
+    hero.beginFill(this.heroColor.current, 1)
+    hero.drawCircle(this.heroSize, this.heroSize, this.heroSize * 2)
 
-    // The player and its settings
-    this.player = this.add.sprite(this.playerStart.x, this.playerStart.y)
-    this.player.width = this.playerSize
-    this.player.height = this.playerSize
-    this.player.addChild(hero)
+    // The hero and its settings
+    this.hero = this.add.sprite(this.heroStart.x, this.heroStart.y)
+    this.hero.width = this.heroSize
+    this.hero.height = this.heroSize
+    this.hero.addChild(hero)
 
-    //  We need to enable physics on the player
-    this.physics.arcade.enable(this.player)
+    let heroEye = this.add.graphics(0, 0)
+    heroEye.beginFill('0xFFFFFF', 1)
+    heroEye.drawCircle(this.heroSize, this.heroSize, (this.heroSize / 2) + 2)
 
-    this.player.body.collideWorldBounds = true
-    this.player.checkWorldBounds = true
+    // Create the eye child
+    this.heroEye = this.hero.addChild(heroEye)
 
-    if (this.player.inCamera === false && this.gameInPlay) {
+    //  We need to enable physics on the hero
+    this.physics.arcade.enable(this.hero)
+
+    this.hero.body.collideWorldBounds = true
+    this.hero.checkWorldBounds = true
+
+    if (this.hero.inCamera === false && this.gameInPlay) {
       this.handleLossOfLife()
     }
 
-    this.add.tween(this.player).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 1000)
+    this.add.tween(this.hero).to({ y: 50 }, 500, Phaser.Easing.Back.Out, true, 1000)
 
-    this.playerGroup.add(this.player)
+    this.heroGroup.add(this.hero)
   }
 
   scorePanelBuilder () {
     this.scorePanel = this.add.group()
-    this.scorePanel.alpha = 0.95
     this.scorePanel.width = this.camera.width
     this.scorePanel.fixedToCamera = true
 
     let scoreBg = this.add.graphics(0, 0)
     scoreBg.beginFill(this.panel.bgCol, 1)
-    scoreBg.drawRect(0, 0, this.camera.width, 30)
+    scoreBg.drawRect(0, 0, this.camera.width, 35)
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
@@ -273,12 +275,12 @@ export default class extends Phaser.State {
 
     // Reset the reversing back to normal
     const resetReverse = () => {
-      this.gameRules.reversePlayer = false
+      this.gameRules.reversehero = false
     }
 
-    //  Reset the players velocity (keyboardEvents)
-    this.player.body.velocity.x = 0
-    this.player.body.velocity.y = 0
+    //  Reset the heros velocity (keyboardEvents)
+    this.hero.body.velocity.x = 0
+    this.hero.body.velocity.y = 0
 
     if (this.cursors.left.isDown) {
       //  Move left
@@ -299,52 +301,89 @@ export default class extends Phaser.State {
     }
   }
 
-  // TODO: Replace with Switch
-  movePlayer () {
-    // Get player position on change of direction
+  moveBadGuys (direction) {
+    if (direction === 'left') {
+      this.badGuyGroup.children.map(badguy => (badguy.body.velocity.x = (this.hero.x + this.hero.body.velocity.x)))
+    } else if (direction === 'right') {
+      this.badGuyGroup.children.map(badguy => (badguy.body.velocity.x = (this.hero.x - this.hero.body.velocity.x)))
+    }
+  }
+
+  moveHero () {
+    // Get hero position on change of direction
     const getPosAtTurn = () => {
-      // Send current player data to allow trail to be built
-      this.storeHeroHistory(this.player.x, this.player.y)
+      // Send current hero data to allow trail to be built
+      this.storeHeroHistory(this.hero.x, this.hero.y)
     }
     // If not reversed, turn normally
-    if (!this.gameRules.reversePlayer) {
+    if (!this.gameRules.reversehero) {
       switch (this.direction) {
         case 'left':
-          this.player.body.velocity.x -= this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.x -= this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = this.heroStart.pivot
+          this.heroEye.pivot.y = 0
+
+          this.moveBadGuys('left')
+
           getPosAtTurn()
           break
         case 'right':
-          this.player.body.velocity.x += this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.x += this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = -this.heroStart.pivot
+          this.heroEye.pivot.y = 0
+
+          this.moveBadGuys('right')
+
           getPosAtTurn()
           break
         case 'up':
-          this.player.body.velocity.y -= this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.y -= this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = 0
+          this.heroEye.pivot.y = this.heroStart.pivot
           getPosAtTurn()
           break
         case 'down':
-          this.player.body.velocity.y += this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.y += this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = 0
+          this.heroEye.pivot.y = -this.heroStart.pivot
           getPosAtTurn()
           break
         default:
           break
       }
-    // Player is reversed!
+    // hero is reversed!
     } else {
       switch (this.direction) {
         case 'left':
-          this.player.body.velocity.x += this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.x += this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = -this.heroStart.pivot
+          this.heroEye.pivot.y = 0
           getPosAtTurn()
           break
         case 'right':
-          this.player.body.velocity.x -= this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.x -= this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = this.heroStart.pivot
+          this.heroEye.pivot.y = 0
           getPosAtTurn()
           break
         case 'up':
-          this.player.body.velocity.y += this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.y += this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = 0
+          this.heroEye.pivot.y = -this.heroStart.pivot
           getPosAtTurn()
           break
         case 'down':
-          this.player.body.velocity.y -= this.gameRules.heroSpeedCurrent
+          this.hero.body.velocity.y -= this.gameRules.heroSpeedCurrent
+          // Pivot eye
+          this.heroEye.pivot.x = 0
+          this.heroEye.pivot.y = this.heroStart.pivot
           getPosAtTurn()
           break
         default:
@@ -355,10 +394,119 @@ export default class extends Phaser.State {
 
   // Constantly move the camera
   moveCamera () {
-    // As long as the game is running and the player has reaches a certain position...
-    if (this.gameInPlay && this.player.y >= this.gameRules.triggerCameraHeight) {
+    // As long as the game is running and the hero has reaches a certain position...
+    if (this.gameInPlay && this.hero.y >= this.gameRules.triggerCameraHeight) {
       this.camera.y += this.gameRules.gameSpeed
     }
+  }
+
+  // Handle Object Collision
+  handleObjectCollision (hero, object) {
+    let name = object.name
+    let text
+    let heroSpeed = this.gameRules.heroSpeedCurrent
+    let bonusPoints = 0
+
+    switch (name) {
+      case 'bonus1':
+        text = '+50 POINTS!'
+        bonusPoints = 50
+        break
+      case 'bonus2':
+        text = '+100 POINTS!'
+        bonusPoints = 100
+        break
+      case '1up':
+        text = '1 UP!'
+        this.heroStart.lives += 1
+        break
+      case 'fast':
+        heroSpeed = 200
+        break
+      case 'slow':
+        heroSpeed = 100
+        break
+
+      default:
+        break
+    }
+
+    // Handle the text update
+    this.showPlayerText(text, 400)
+
+    // Add bonus to total
+    this.bonusPoints += bonusPoints
+
+    this.gameRules.heroSpeedCurrent = heroSpeed
+
+    // Tiles to be reset for each death go here
+    if (name === 'slow' || name === 'fast') {
+      if (!this.speedTimerInMotion) {
+        this.handleSpeedTimer(name)
+      }
+      // Add the touched tile to an array
+      this.touchableObjects.push(object)
+    } else {
+      object.kill()
+      // Else end of game reset tiles go here
+      this.specialTouchableObjects.push(object)
+    }
+  }
+
+  // Generic handler for all hover text
+  showPlayerText (textToDisplay, lifespan) {
+    this.textInfo = this.add.text(this.hero.x, this.hero.y, textToDisplay, this.textStyle)
+    this.textInfo.anchor.setTo(0.5) // set anchor to middle / center
+    this.textInfo.lifespan = lifespan
+  }
+
+  // Generic handler for all hover text
+  showPlayerTextFollow (textToDisplay, lifespan) {
+    this.textInfoFollow = this.add.text(0, 0, textToDisplay, this.textOverlayStyle)
+    this.textInfoFollow.anchor.setTo(0.5) // set anchor to middle / center
+    this.textInfoFollow.lifespan = lifespan
+    this.textInfoFollow.x = this.centerX
+    this.textInfoFollow.y = this.centerY
+    this.textInfoFollow.fixedToCamera = true
+  }
+
+  handleSpeedTimer (speedType) {
+    // Toggle speed timer allowence
+    this.speedTimerInMotion = !this.speedTimerInMotion
+
+    let speedText
+
+    if (speedType === 'fast') {
+      speedText = `Speeded for: `
+    } else if (speedType === 'slow') {
+      speedText = `Slowed for:  `
+    }
+
+    // 'setTimeout' event for turning off player speed changes
+    this.time.events.add(Phaser.Timer.SECOND * this.gameRules.speedTimer, () => {
+      this.gameRules.heroSpeedCurrent = 180
+    }, this)
+
+    // Set initial counter length
+    let totalTime = Phaser.Timer.SECOND * (this.gameRules.speedTimer)
+
+    // Looped timer
+    const updateCounter = () => {
+      totalTime -= Phaser.Timer.SECOND
+
+      // Show text
+      this.showPlayerTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
+
+      // If timed out, remove counter
+      if (totalTime <= Phaser.Timer.SECOND) this.time.events.remove(textTimer)
+    }
+
+    // On collide, show this first, (to be replaced in the loop)
+    this.showPlayerTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
+
+    // https://phaser.io/examples/v2/time/custom-timer
+    // Create looped timer
+    let textTimer = this.time.events.loop(Phaser.Timer.SECOND, updateCounter, this)
   }
 
   handleGameInPlay () {
@@ -373,17 +521,28 @@ export default class extends Phaser.State {
     }
     this.getNewStartTime = false
 
-    // To move player
-    this.movePlayer()
+    // To move hero
+    this.moveHero()
     this.moveCamera()
+    this.moveBadGuys()
 
-    // Collide the player and the stars with the walls
-    this.physics.arcade.collide(this.player, this.mapLayer, this.handleLossOfLife, null, this)
-    // When the player hits the edge of the screen
-    this.player.events.onOutOfBounds.add(this.handleLossOfLife, this)
+    // // Collide the hero and the stars with the walls
+    this.physics.arcade.collide(this.hero, this.mapLayer, this.handleLossOfLife, null, this)
 
-    // If player is off screen
-    if (this.player.y <= this.game.camera.y + (this.playerSize / 2)) {
+    // When the hero hits the edge of the screen
+    this.hero.events.onOutOfBounds.add(this.handleLossOfLife, this)
+
+    // When hero overlaps objects
+    this.physics.arcade.overlap(this.hero, this.bonus1Group, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.hero, this.bonus2Group, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.hero, this.oneUpGroup, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.hero, this.slowDownGroup, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.hero, this.speedUpGroup, this.handleObjectCollision, null, this)
+    this.physics.arcade.overlap(this.hero, this.badGuyGroup, this.handleLossOfLife, null, this)
+    this.physics.arcade.overlap(this.hero, this.smallWallGroup, this.handleLossOfLife, null, this)
+
+    // If hero is off screen
+    if (this.hero.y <= this.game.camera.y + (this.heroSize / 2)) {
       this.handleLossOfLife()
     }
   }
@@ -394,50 +553,56 @@ export default class extends Phaser.State {
 
     this.trail.destroy()
     this.score = 0
-    this.scoreText.text = `Score: ${this.score}`
+    this.scoreText.text = `SCORE: ${this.score}`
 
     this.direction = 'down'
     this.endGame = false
     this.bonusPoints = 0
     this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
-    this.gameRules.reversePlayer = false
-    this.playerColor.current = this.playerColor.default
-    this.resetTouchableTiles()
+    this.gameRules.reversehero = false
+    this.heroColor.current = this.heroColor.default
+    this.resetTouchableItems()
 
     // If it's game over...
     if (this.gameOver) {
       // Reset
-      this.playerStart.lives = 3
-      this.livesLeft.text = `Lives: ${this.playerStart.lives}`
+      this.heroStart.lives = 3
+      this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
       this.camera.y = 0
-      this.playerStart.x = 198 // TODO get rid of hard-value
-      this.playerStart.y = 50 // TODO get rid of hard-value
+      this.heroStart.x = 198 // TODO get rid of hard-value
+      this.heroStart.y = 50 // TODO get rid of hard-value
       // Reset special tiles
-      this.resetSpecialTouchableTiles()
-      // Put player in position
-      this.readyPlayerOne()
+      this.resetSpecialTouchableItems()
+      // Put hero in position
+      this.readyHeroOne()
     // Else, do things differently
     } else {
-      this.player.x = this.playerStart.x
-      this.player.y = this.playerStart.y
-      this.camera.y = this.playerStart.y - (this.camera.height / 2 - 100)
-      // Put player in position
-      this.readyPlayerOne()
+      this.hero.x = this.heroStart.x
+      this.hero.y = this.heroStart.y
+      this.camera.y = this.heroStart.y - (this.camera.height / 2 - 100)
+      // Put hero in position
+      this.readyHeroOne()
     }
     // Reset gameOver value (after Game over happens)
     this.gameOver = false
   }
 
-  readyPlayerOne () {
-    // Move player into start position
-    this.player.x = this.playerStart.x
-    this.player.y = this.playerStart.y
+  readyHeroOne () {
+    // Move hero into start position
+    this.hero.x = this.heroStart.x
+    this.hero.y = this.heroStart.y
 
-    // Tween player in before starting...
-    let tweenPlayerIn = this.add.tween(this.player).from({y: 0}, 500, Phaser.Easing.Back.Out, true, 500)
-    tweenPlayerIn.onComplete.add(() => {
-      // Player needs to be in position nefore starting
-      this.playerStart.inPosition = true
+    // Move bad guys too
+    this.badGuyGroup.children.map(badguy => {
+      badguy.body.velocity.x = 0
+      badguy.x = (this.heroStart.x - 10)
+    })
+
+    // Tween hero in before starting...
+    let tweenheroIn = this.add.tween(this.hero).from({y: 0}, 500, Phaser.Easing.Back.Out, true, 500)
+    tweenheroIn.onComplete.add(() => {
+      // hero needs to be in position nefore starting
+      this.heroStart.inPosition = true
 
       if (!this.gameInPlay) {
         this.startAgainInfo()
@@ -446,22 +611,20 @@ export default class extends Phaser.State {
   }
 
   handleLossOfLife () {
-    this.playerStart.lives -= 1
+    this.heroStart.lives -= 1
     this.endGame = true
     this.direction = null
     this.gameInPlay = false
-    this.playerStart.inPosition = false
+    this.heroStart.inPosition = false
+    this.speedTimerInMotion = !this.speedTimerInMotion
 
-    this.livesLeft.text = `Lives: ${this.playerStart.lives}`
+    this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
 
-    this.playerInfo = this.add.text(this.player.x + 7, this.player.y - 15, 'OUCH', { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.5)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.playerInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Kill off after this time...
-    this.playerInfo.lifespan = 1000
+    this.showPlayerText('OUCH', 1000)
 
-    //  Reset the players velocity (keyboardEvents)
-    this.player.body.velocity.x = 0
-    this.player.body.velocity.y = 0
+    //  Reset the heros velocity (keyboardEvents)
+    this.hero.body.velocity.x = 0
+    this.hero.body.velocity.y = 0
 
     //  You can set your own intensity and duration
     this.camera.shake(0.01, 500)
@@ -471,7 +634,7 @@ export default class extends Phaser.State {
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.restartInfo.fixedToCamera = true
 
-    if (this.playerStart.lives === 0) {
+    if (this.heroStart.lives === 0) {
       this.handleGameOver()
     }
   }
@@ -487,7 +650,7 @@ export default class extends Phaser.State {
     this.endGamePanel.fixedToCamera = true
 
     this.endGameBG = this.add.graphics(0, 0)
-    this.endGameBG.beginFill(this.playerColor.current, 1)
+    this.endGameBG.beginFill(this.heroColor.current, 1)
     this.endGameBG.drawRect(35, (this.camera.height / 2) - 85, this.camera.width - 80, 170)
     this.endGameBG.anchor.set(0.5, 0.5)
 
@@ -538,10 +701,14 @@ export default class extends Phaser.State {
     this.startPanelBG.world.x = this.centerX
     this.startPanelBG.world.y = this.centerY
     this.startPanelBG.fixedToCamera = true
-    this.startPanelBG.anchor.set(0.5)    
+    this.startPanelBG.anchor.set(0.5)
     this.startPanelBG.alpha = 1
     this.startPanelBG.scale.x = 1
     this.startPanelBG.scale.y = 1
+
+    // Reset eyeball
+    this.heroEye.pivot.x = 0
+    this.heroEye.pivot.y = 0
 
     this.startInfo = this.add.text(0, 5, 'SPACEBAR TO START', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
@@ -554,20 +721,71 @@ export default class extends Phaser.State {
 
     startTween1.chain(startTween2)
     startTween1.start()
-    //this.add.tween(this.startPanel).to({ alpha: 1 }, 1000, 'Linear', true, 250).yoyo(true).loop(true)
+  }
+
+  // Create 1 Up items from map objects
+  oneUpBuilder () {
+    this.oneUpGroup = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, '1up', this.objects.spritesheet, 4, true, false, this.oneUpGroup)
+  }
+
+  // Create Small Walls items from map objects
+  smallWallBuilder () {
+    this.smallWallGroup = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'smallWall', this.objects.spritesheet, 5, true, false, this.smallWallGroup)
+  }
+
+  // Create Bonus 2 items from map objects
+  bonus1Builder () {
+    this.bonus1Group = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'bonus1', this.objects.spritesheet, 0, true, false, this.bonus1Group)
+  }
+
+  // Create Bonus 2 items from map objects
+  bonus2Builder () {
+    this.bonus2Group = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'bonus2', this.objects.spritesheet, 3, true, false, this.bonus2Group)
+  }
+
+  // Create Slow Down items from map objects
+  slowDownBuilder () {
+    this.slowDownGroup = this.add.physicsGroup()
+    this.slowDownGroup.alpha = 0.5
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'slow', this.objects.spritesheet, 1, true, false, this.slowDownGroup)
+  }
+
+  // Create Speed Up items from map objects
+  speedUpBuilder () {
+    this.speedUpGroup = this.add.physicsGroup()
+    this.slowDownGroup.alpha = 0.5
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'fast', this.objects.spritesheet, 2, true, false, this.speedUpGroup)
+  }
+
+  // Bad guy builder
+  badGuyBuilder () {
+    this.badGuyGroup = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'badguy', this.objects.spritesheet, 6, true, false, this.badGuyGroup)
+    this.badGuyGroup.children.map(badguy => (badguy.body.enable = true))
   }
 
   updateScore () {
-    this.score = Math.floor(this.player.y - this.playerStart.y) + this.bonusPoints
+    this.score = Math.floor(this.hero.y - this.heroStart.y) + this.bonusPoints
     this.scoreText.text = `SCORE: ${this.score}`
-    this.livesLeft.text = `LIVES: ${this.playerStart.lives}`
+    this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
     this.highScoreText.text = `HIGH: ${localStorage.highScore || 0}`
   }
 
   scoreText () {
-    this.scoreText = this.add.text(10, 8, 'SCORE: 0', {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
-    this.livesLeft = this.add.text(178, 8, `LIVES: ${this.playerStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
-    this.highScoreText = this.add.text(0, 8, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
+    this.scoreText = this.add.text(10, 10, 'SCORE: 0', {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
+    this.livesLeft = this.add.text(178, 10, `LIVES: ${this.heroStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
+    this.highScoreText = this.add.text(0, 10, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
     this.scorePanel.add(this.scoreText)
@@ -597,14 +815,26 @@ export default class extends Phaser.State {
     this.centerY = this.camera.height / 2
 
     this.wallBuilder()
-    this.goalInfo = this.add.text(130, 120, 'REACH THE CHECKPOINT', { font: this.style.font, fontSize: '12px', fill: 'rgba(0, 0, 0, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.playerGroup = this.add.group()
-    this.playerBuilder()
+    this.goalInfo = this.add.text(130, 85, 'REACH THE CHECKPOINT', { font: this.style.font, fontSize: '12px', fill: 'rgba(0, 0, 0, 0.25)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.heroGroup = this.add.group()
+    this.heroBuilder()
     this.tunnelGroup = this.add.group()
-    this.tileMap.createFromTiles(5, 5, null, this.mapLayer, this.tunnelGroup)
+
+    this.oneUpGroup = this.add.group()
+    this.bonus1Group = this.add.group()
+    this.bonus2Group = this.add.group()
+
+    this.smallWallBuilder()
+    this.bonus1Builder()
+    this.bonus2Builder()
+    this.oneUpBuilder()
+    this.slowDownBuilder()
+    this.speedUpBuilder()
+    this.badGuyBuilder()
+
     this.scorePanelBuilder()
     this.scoreText()
-    this.readyPlayerOne()
+    this.readyHeroOne()
   }
 
   update () {
@@ -612,13 +842,16 @@ export default class extends Phaser.State {
     this.enter = this.input.keyboard.addKey(Phaser.Keyboard.ENTER)
     this.enterNumpad = this.input.keyboard.addKey(Phaser.Keyboard.NUMPAD_ENTER)
 
-    // If we're not already playing, and not in the game over phase, and the player is in position, and the spacebar is pressed... *phew*
-    if (!this.gameInPlay && !this.endGame && this.playerStart.inPosition && this.spacebar.isDown) {
+    // Things that move even after bad as stopped
+    this.physics.arcade.collide(this.badGuyGroup, this.mapLayer, null, null, this)
+
+    // If we're not already playing, and not in the game over phase, and the hero is in position, and the spacebar is pressed... *phew*
+    if (!this.gameInPlay && !this.endGame && this.heroStart.inPosition && this.spacebar.isDown) {
       this.gameInPlay = true
     }
 
-    // Only update score if player is in position
-    if (this.player.y >= this.playerStart.y + 5) {
+    // Only update score if hero is in position
+    if (this.hero.y >= this.heroStart.y + 5) {
       this.updateScore()
     }
 
@@ -633,14 +866,14 @@ export default class extends Phaser.State {
     }
 
     // Handle z order
-    this.game.world.sendToBack(this.playerGroup)
+    this.game.world.sendToBack(this.heroGroup)
     this.game.world.bringToTop(this.tunnelGroup)
   }
 
   render () {
     if (__DEV__) {
-      //this.game.debug.cameraInfo(this.camera, 32, 32)
-      // this.game.debug.spriteCoords(this.player, 32, 500)
+      // this.game.debug.cameraInfo(this.camera, 32, 32)
+      // this.game.debug.spriteCoords(this.hero, 32, 500)
     }
   }
 }
