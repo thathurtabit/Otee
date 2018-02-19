@@ -34,9 +34,11 @@ export default class extends Phaser.State {
       textCol: 0x2D3A44
     }
     this.overlay = {
-      bgColHex: '#8777f9',
-      bgCol: 0x8777f9,
-      textCol: '#ffffff'
+      bgColHex: '#FFD670',
+      bgCol: 0xFFD670,
+      bgCol2: 0x8777f9,
+      bgCol3: 0x16B77F,
+      textCol: '#8777f9'
     }
     this.heroColor = {
       current: 0xFF7F66,
@@ -63,8 +65,8 @@ export default class extends Phaser.State {
       reverseHero: false,
       speedTimer: 3
     }
-    this.textStyle = { font: this.style.font, fontSize: '10px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
-    this.textOverlayStyle = { font: this.style.font, fontSize: '15px', fill: '#FFF', backgroundColor: 'rgba(0, 0, 0, 0.75)', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
+    this.textStyle = { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
+    this.textOverlayStyle = { font: this.style.font, fontSize: '18px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' }
     this.bonusPoints = 0
   }
 
@@ -128,7 +130,7 @@ export default class extends Phaser.State {
         break
     }
 
-    this.showPlayerText(text, 400)
+    this.showHeroText(text, 400)
 
     // Change opacity down
     tile.alpha = tileAlpha
@@ -194,7 +196,7 @@ export default class extends Phaser.State {
   handleCheckpoint (sprite, tile) {
     // When we hit the tile, do things only once...
     if (tile.alpha === 1) {
-      this.showPlayerText('CHECKPOINT!', 1000)
+      this.showHeroText('CHECKPOINT!', 1000)
     }
     tile.alpha = 0.2
     this.mapLayer.dirty = true
@@ -429,7 +431,7 @@ export default class extends Phaser.State {
     }
 
     // Handle the text update
-    this.showPlayerText(text, 400)
+    this.showHeroText(text, 400)
 
     // Add bonus to total
     this.bonusPoints += bonusPoints
@@ -451,14 +453,14 @@ export default class extends Phaser.State {
   }
 
   // Generic handler for all hover text
-  showPlayerText (textToDisplay, lifespan) {
-    this.textInfo = this.add.text(this.hero.x, this.hero.y, textToDisplay, this.textStyle)
+  showHeroText (textToDisplay, lifespan) {
+    this.textInfo = this.add.text(this.hero.x, this.hero.y - 5, textToDisplay, this.textStyle)
     this.textInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.textInfo.lifespan = lifespan
   }
 
   // Generic handler for all hover text
-  showPlayerTextFollow (textToDisplay, lifespan) {
+  showHeroTextFollow (textToDisplay, lifespan) {
     this.textInfoFollow = this.add.text(0, 0, textToDisplay, this.textOverlayStyle)
     this.textInfoFollow.anchor.setTo(0.5) // set anchor to middle / center
     this.textInfoFollow.lifespan = lifespan
@@ -492,14 +494,14 @@ export default class extends Phaser.State {
       totalTime -= Phaser.Timer.SECOND
 
       // Show text
-      this.showPlayerTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
+      this.showHeroTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
 
       // If timed out, remove counter
       if (totalTime <= Phaser.Timer.SECOND) this.time.events.remove(textTimer)
     }
 
     // On collide, show this first, (to be replaced in the loop)
-    this.showPlayerTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
+    this.showHeroTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
 
     // https://phaser.io/examples/v2/time/custom-timer
     // Create looped timer
@@ -507,10 +509,9 @@ export default class extends Phaser.State {
   }
 
   handleGameInPlay () {
-    this.startInfo.kill()
     // if it bleeds we can kill it
-    if (this.startPanelBG) {
-      this.startPanelBG.kill()
+    if (this.startPanelGroup) {
+      this.startPanelGroup.kill()
     }
     // Only required once per loop to generate total time
     if (this.getNewStartTime) {
@@ -546,7 +547,7 @@ export default class extends Phaser.State {
 
   handleReset () {
     if (this.endGamePanel) this.endGamePanel.kill()
-    if (this.restartInfo) this.restartInfo.kill()
+    if (this.restartPanelBG) this.restartPanelBG.kill()
 
     this.trail.destroy()
     this.score = 0
@@ -589,6 +590,10 @@ export default class extends Phaser.State {
     this.hero.x = this.heroStart.x
     this.hero.y = this.heroStart.y
 
+    // Reset eyeball
+    this.heroEye.pivot.x = 0
+    this.heroEye.pivot.y = 0
+
     // Move bad guys too
     this.badGuyGroup.children.map(badguy => {
       badguy.body.velocity.x = 0
@@ -596,7 +601,7 @@ export default class extends Phaser.State {
     })
 
     // Tween hero in before starting...
-    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 1000, Phaser.Easing.Elastic.Out, true, 1000)
+    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 1000, Phaser.Easing.Linear.None, true, 1000)
     this.add.tween(this.hero.pivot).from({x: 0, y: 20}, 1000, Phaser.Easing.Elastic.Out, true, 1000)
 
     tweenheroIn.onComplete.add(() => {
@@ -619,7 +624,7 @@ export default class extends Phaser.State {
 
     this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
 
-    this.showPlayerText('OUCH', 1000)
+    this.showHeroText('OUCH', 1000)
 
     //  Reset the heros velocity (keyboardEvents)
     this.hero.body.velocity.x = 0
@@ -628,10 +633,23 @@ export default class extends Phaser.State {
     //  You can set your own intensity and duration
     this.camera.shake(0.01, 500)
 
-    // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY, 'ENTER TO RESTART', { font: this.style.font, fontSize: '20px', fill: this.overlay.textCol, backgroundColor: this.overlay.bgColHex, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartPanelBG = this.add.graphics(this.centerX, this.centerY)
+    this.restartPanelBG.beginFill(this.overlay.bgCol, 1)
+    this.restartPanelBG.drawCircle(0, 0, 170)
+    this.restartPanelBG.world.x = this.centerX
+    this.restartPanelBG.world.y = this.centerY
+    this.restartPanelBG.fixedToCamera = true
+    this.restartPanelBG.anchor.set(0.5)
+    this.restartPanelBG.alpha = 1
+    this.restartPanelBG.scale.x = 1
+    this.restartPanelBG.scale.y = 1
+
+    this.restartInfo = this.add.text(0, 5, 'ENTER TO RESET', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
-    this.restartInfo.fixedToCamera = true
+
+    this.restartPanelBG.addChild(this.restartInfo)
+
+    this.restartPanelBG.fixedToCamera = true
 
     if (this.heroStart.lives === 0) {
       this.handleGameOver()
@@ -640,45 +658,65 @@ export default class extends Phaser.State {
 
   handleGameOver () {
     this.gameOver = true
-    this.restartInfo.kill()
+    this.restartPanelBG.kill()
+    // Number of Game Over panels to over on game over
+    this.endGamePanelsArray = [1, 2, 3, 4, 5]
+    this.endGamePanelHeight = this.camera.height / this.endGamePanelsArray.length
 
-    // Create Group for Info
-    this.endGamePanel = this.add.group()
-    this.endGamePanel.alpha = 0
-    this.endGamePanel.width = this.camera.width - 30
-    this.endGamePanel.fixedToCamera = true
+    // Create group for panel
+    this.endGamePanelGroup = this.add.group()
+    this.endGamePanelGroup.alpha = 0.8
+    this.endGamePanelGroup.x = 0
+    this.endGamePanelGroup.y = 0
+    this.endGamePanelGroup.fixedToCamera = true
 
-    this.endGameBG = this.add.graphics(0, 0)
-    this.endGameBG.beginFill(this.heroColor.current, 1)
-    this.endGameBG.drawRect(35, (this.camera.height / 2) - 85, this.camera.width - 80, 170)
-    this.endGameBG.anchor.set(0.5, 0.5)
+    this.endGamePanelsArray.map((GOPanel, index) => {
+      // Draw panel graphics
+      GOPanel = this.add.graphics(0, 0)
+      GOPanel.beginFill(this.overlay.bgCol, 1)
+      // x, y, width, height
+      GOPanel.drawRect(this.endGamePanelGroup.x, (this.endGamePanelHeight * index), this.camera.width, this.endGamePanelHeight)
+      GOPanel.anchor.set(0.5)
+      // Add to group
+      this.endGamePanelGroup.add(GOPanel)
+      console.log(`index of panels ${index}`)
+    })
 
-    // use the bitmap data as the texture for the sprite
-    this.endGamePanel.add(this.endGameBG)
+    console.log(this.endGamePanelGroup)
+
+    // Create Group for Text
+    this.endGameTextGroup = this.add.group()
+    this.endGameTextGroup.alpha = 0
+    this.endGameTextGroup.fixedToCamera = true
 
     // Get play time
     this.totalTime = this.msToTime(Date.now() - this.startTime)
     this.getNewStartTime = true
 
     // Game over text
-    this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Score
-    this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `Score: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `Score: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Time
-    this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `Time: ${this.totalTime} `, { font: this.style.font, fontSize: '15px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `Time: ${this.totalTime} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY + 50, 'Press ENTER to reset', { font: this.style.font, backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: '#FFF', align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.restartInfo = this.add.text(this.centerX, this.centerY + 50, 'Press ENTER TO RESET', { font: this.style.font, backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
     // Add text to group
-    this.endGamePanel.add(this.scoreInfo)
-    this.endGamePanel.add(this.totalTimeInfo)
-    this.endGamePanel.add(this.gameOverInfo)
-    this.endGamePanel.add(this.restartInfo)
+    this.endGameTextGroup.add(this.scoreInfo)
+    this.endGameTextGroup.add(this.totalTimeInfo)
+    this.endGameTextGroup.add(this.gameOverInfo)
+    this.endGameTextGroup.add(this.restartInfo)
 
-    this.add.tween(this.endGamePanel).to({alpha: 1}, 250, 'Linear', true)
+    // Loop and apply tween to each panel
+    this.endGamePanelGroup.children.map((GOPanel, index) => {
+      this.add.tween(GOPanel).from({x: -this.camera.width}, (1000 * index), Phaser.Easing.Circular.Out, true)
+    })
+
+    this.add.tween(this.endGameTextGroup).to({alpha: 1}, 250, 'Linear', true)
 
     this.setHighScore()
   }
@@ -694,6 +732,30 @@ export default class extends Phaser.State {
   }
 
   startAgainInfo () {
+    this.startPanel3BG = this.add.graphics(this.centerX, this.centerY)
+    this.startPanel3BG.beginFill(this.overlay.bgCol3, 1)
+    this.startPanel3BG.drawCircle(0, 0, 170)
+    this.startPanel3BG.pivot.x = -50
+    this.startPanel3BG.world.x = this.centerX
+    this.startPanel3BG.world.y = this.centerY
+    this.startPanel3BG.fixedToCamera = true
+    this.startPanel3BG.anchor.set(0.5)
+    this.startPanel3BG.alpha = 0.95
+    this.startPanel3BG.scale.x = 1
+    this.startPanel3BG.scale.y = 1
+
+    this.startPanel2BG = this.add.graphics(this.centerX, this.centerY)
+    this.startPanel2BG.beginFill(this.overlay.bgCol2, 1)
+    this.startPanel2BG.drawCircle(0, 0, 170)
+    this.startPanel2BG.pivot.x = 50
+    this.startPanel2BG.world.x = this.centerX
+    this.startPanel2BG.world.y = this.centerY
+    this.startPanel2BG.fixedToCamera = true
+    this.startPanel2BG.anchor.set(0.5)
+    this.startPanel2BG.alpha = 0.95
+    this.startPanel2BG.scale.x = 1
+    this.startPanel2BG.scale.y = 1
+
     this.startPanelBG = this.add.graphics(this.centerX, this.centerY)
     this.startPanelBG.beginFill(this.overlay.bgCol, 1)
     this.startPanelBG.drawCircle(0, 0, 170)
@@ -705,20 +767,26 @@ export default class extends Phaser.State {
     this.startPanelBG.scale.x = 1
     this.startPanelBG.scale.y = 1
 
-    // Reset eyeball
-    this.heroEye.pivot.x = 0
-    this.heroEye.pivot.y = 0
-
-    this.startInfo = this.add.text(0, 5, 'SPACEBAR TO START', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+    this.startInfo = this.add.text(this.centerX, this.centerY + 5, 'SPACEBAR TO START', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
     this.startInfo.anchor.setTo(0.5) // set anchor to middle / center
 
     this.startPanelBG.addChild(this.startInfo)
 
-    this.score = 0
-    let startTween1 = this.add.tween(this.startPanelBG).from({ alpha: 0 }, 1000, 'Linear')
-    let startTween2 = this.add.tween(this.startPanelBG.scale).to({ x: 1.05, y: 1.05 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
+    this.startPanelGroup = this.add.group()
 
-    startTween1.chain(startTween2)
+    this.startPanelGroup.add(this.startPanel3BG)
+    this.startPanelGroup.add(this.startPanel2BG)
+    this.startPanelGroup.add(this.startPanelBG)
+    this.startPanelGroup.add(this.startInfo)
+
+    this.score = 0
+
+    let startTween1 = this.add.tween(this.startPanelGroup).from({ alpha: 0 }, 500, 'Linear')
+    let startTween2 = this.add.tween(this.startPanelBG.scale).to({ x: 1.1, y: 1.1 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
+    let startTween3 = this.add.tween(this.startPanel2BG.pivot).to({ x: -50 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
+    let startTween4 = this.add.tween(this.startPanel3BG.pivot).to({ x: 50 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
+
+    startTween1.chain(startTween2, startTween3, startTween4)
     startTween1.start()
   }
 
