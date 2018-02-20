@@ -454,7 +454,7 @@ export default class extends Phaser.State {
 
   // Generic handler for all hover text
   showHeroText (textToDisplay, lifespan) {
-    this.textInfo = this.add.text(this.hero.x, this.hero.y - 5, textToDisplay, this.textStyle)
+    this.textInfo = this.add.text(this.hero.x + 8, this.hero.y - 10, textToDisplay, this.textStyle)
     this.textInfo.anchor.setTo(0.5) // set anchor to middle / center
     this.textInfo.lifespan = lifespan
   }
@@ -478,12 +478,13 @@ export default class extends Phaser.State {
     if (speedType === 'fast') {
       speedText = `Speeded for: `
     } else if (speedType === 'slow') {
-      speedText = `Slowed for:  `
+      speedText = `Slowed for: `
     }
 
     // 'setTimeout' event for turning off player speed changes
-    this.time.events.add(Phaser.Timer.SECOND * this.gameRules.speedTimer, () => {
+    let setSpeedTimeout = this.time.events.add(Phaser.Timer.SECOND * this.gameRules.speedTimer, () => {
       this.gameRules.heroSpeedCurrent = 180
+      this.time.events.remove(setSpeedTimeout)
     }, this)
 
     // Set initial counter length
@@ -497,7 +498,7 @@ export default class extends Phaser.State {
       this.showHeroTextFollow(speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`), Phaser.Timer.SECOND)
 
       // If timed out, remove counter
-      if (totalTime <= Phaser.Timer.SECOND) this.time.events.remove(textTimer)
+      if (totalTime <= Phaser.Timer.SECOND) this.time.events.remove(this.textTimer)
     }
 
     // On collide, show this first, (to be replaced in the loop)
@@ -505,7 +506,7 @@ export default class extends Phaser.State {
 
     // https://phaser.io/examples/v2/time/custom-timer
     // Create looped timer
-    let textTimer = this.time.events.loop(Phaser.Timer.SECOND, updateCounter, this)
+    this.textTimer = this.time.events.loop(Phaser.Timer.SECOND, updateCounter, this)
   }
 
   handleGameInPlay () {
@@ -546,7 +547,8 @@ export default class extends Phaser.State {
   }
 
   handleReset () {
-    if (this.endGamePanel) this.endGamePanel.kill()
+    if (this.endGamePanelGroup) this.endGamePanelGroup.kill()
+    if (this.endGameTextGroup) this.endGameTextGroup.kill()
     if (this.restartPanelBG) this.restartPanelBG.kill()
 
     this.trail.destroy()
@@ -601,8 +603,8 @@ export default class extends Phaser.State {
     })
 
     // Tween hero in before starting...
-    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 1000, Phaser.Easing.Linear.None, true, 1000)
-    this.add.tween(this.hero.pivot).from({x: 0, y: 20}, 1000, Phaser.Easing.Elastic.Out, true, 1000)
+    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 500, Phaser.Easing.Linear.None, true, 200)
+    this.add.tween(this.hero.pivot).from({x: 0, y: 20}, 500, Phaser.Easing.Elastic.Out, true, 200)
 
     tweenheroIn.onComplete.add(() => {
       // hero needs to be in position nefore starting
@@ -620,7 +622,9 @@ export default class extends Phaser.State {
     this.direction = null
     this.gameInPlay = false
     this.heroStart.inPosition = false
-    this.speedTimerInMotion = !this.speedTimerInMotion    
+    this.speedTimerInMotion = !this.speedTimerInMotion
+
+    this.time.events.remove(this.textTimer)
 
     this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
 
@@ -649,6 +653,9 @@ export default class extends Phaser.State {
 
     this.restartPanelBG.addChild(this.restartInfo)
 
+    //this.add.tween(this.restartPanelBG).to({alpha: 1}, 500, Phaser.Easing.Linear.None, true)
+    this.add.tween(this.restartPanelBG.pivot).from({x: 500}, 500, Phaser.Easing.Elastic.Out, true)
+
     this.restartPanelBG.fixedToCamera = true
 
     if (this.heroStart.lives === 0) {
@@ -660,14 +667,11 @@ export default class extends Phaser.State {
     this.gameOver = true
     this.restartPanelBG.kill()
     // Number of Game Over panels to over on game over
-    this.endGamePanelsArray = [1, 2, 3, 4, 5]
+    this.endGamePanelsArray = [...Array(12).keys()]
     this.endGamePanelHeight = this.camera.height / this.endGamePanelsArray.length
 
     // Create group for panel
     this.endGamePanelGroup = this.add.group()
-    this.endGamePanelGroup.alpha = 0.8
-    this.endGamePanelGroup.x = 0
-    this.endGamePanelGroup.y = 0
     this.endGamePanelGroup.fixedToCamera = true
 
     this.endGamePanelsArray.map((GOPanel, index) => {
@@ -676,13 +680,11 @@ export default class extends Phaser.State {
       GOPanel.beginFill(this.overlay.bgCol, 1)
       // x, y, width, height
       GOPanel.drawRect(this.endGamePanelGroup.x, (this.endGamePanelHeight * index), this.camera.width, this.endGamePanelHeight)
+      GOPanel.alpha = 0.8 + (0.02 * index)
       GOPanel.anchor.set(0.5)
       // Add to group
       this.endGamePanelGroup.add(GOPanel)
-      console.log(`index of panels ${index}`)
     })
-
-    console.log(this.endGamePanelGroup)
 
     // Create Group for Text
     this.endGameTextGroup = this.add.group()
@@ -713,7 +715,7 @@ export default class extends Phaser.State {
 
     // Loop and apply tween to each panel
     this.endGamePanelGroup.children.map((GOPanel, index) => {
-      this.add.tween(GOPanel).from({x: -this.camera.width}, (1000 * index), Phaser.Easing.Circular.Out, true)
+      this.add.tween(GOPanel).from({x: -this.camera.width}, 300, Phaser.Easing.Circular.Out, true, 100 * index)
     })
 
     this.add.tween(this.endGameTextGroup).to({alpha: 1}, 250, 'Linear', true)
@@ -781,12 +783,15 @@ export default class extends Phaser.State {
 
     this.score = 0
 
-    let startTween1 = this.add.tween(this.startPanelGroup).from({ alpha: 0 }, 500, 'Linear')
-    let startTween2 = this.add.tween(this.startPanelBG.scale).to({ x: 1.1, y: 1.1 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
-    let startTween3 = this.add.tween(this.startPanel2BG.pivot).to({ x: -50 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
-    let startTween4 = this.add.tween(this.startPanel3BG.pivot).to({ x: 50 }, 500, Phaser.Easing.Circular.InOut, 500, 1000).yoyo(true).loop(true)
+    // Display
+    this.add.tween(this.startPanelGroup.pivot).from({ x: 500 }, 500, Phaser.Easing.Circular.InOut, 500)
 
-    startTween1.chain(startTween2, startTween3, startTween4)
+    // Animate while displayed
+    let startTween1 = this.add.tween(this.startPanelBG.scale).to({ x: 1.1, y: 1.1 }, 500, Phaser.Easing.Circular.InOut, 500, 500).yoyo(true).loop(true)
+    let startTween2 = this.add.tween(this.startPanel2BG.pivot).to({ x: -50 }, 500, Phaser.Easing.Circular.InOut, 500, 500).yoyo(true).loop(true)
+    let startTween3 = this.add.tween(this.startPanel3BG.pivot).to({ x: 50 }, 500, Phaser.Easing.Circular.InOut, 500, 500).yoyo(true).loop(true)
+
+    startTween1.chain(startTween2, startTween3)
     startTween1.start()
   }
 
