@@ -54,6 +54,11 @@ export default class extends Phaser.State {
       lives: 3,
       pivot: 6
     }
+    this.badGuysMovement = {
+      velocity: 30,
+      rtl: true,
+      ltr: true
+    }
     this.speedTimerInMotion = false
     this.gameRules = {
       gameSpeed: 1,
@@ -232,7 +237,7 @@ export default class extends Phaser.State {
     this.hero = this.add.sprite(this.heroStart.x, this.heroStart.y)
     this.hero.width = this.heroSize
     this.hero.height = this.heroSize
-    this.hero.addChild(hero)    
+    this.hero.addChild(hero)
 
     let heroEye = this.add.graphics(0, 0)
     heroEye.beginFill('0xFFFFFF', 1)
@@ -302,9 +307,25 @@ export default class extends Phaser.State {
 
   moveBadGuys (direction) {
     if (direction === 'left') {
-      this.badGuyGroup.children.map(badguy => (badguy.body.velocity.x = (this.hero.x + this.hero.body.velocity.x)))
+      this.badGuyGroup.children.map(badguy => (badguy.body.velocity.x = (this.hero.x + (this.hero.body.velocity.x - 20))))
     } else if (direction === 'right') {
-      this.badGuyGroup.children.map(badguy => (badguy.body.velocity.x = (this.hero.x - this.hero.body.velocity.x)))
+      this.badGuyGroup.children.map(badguy => (badguy.body.velocity.x = (this.hero.x - (this.hero.body.velocity.x - 20))))
+    }
+  }
+
+  moveBadGuysRTL () {
+    if (this.badGuysMovement.rtl) {
+      this.badGuyGroupRTL.children.map(badguy => (badguy.body.velocity.x = this.badGuysMovement.velocity))
+    } else {
+      this.badGuyGroupRTL.children.map(badguy => (badguy.body.velocity.x = -this.badGuysMovement.velocity))
+    }
+  }
+
+  moveBadGuysLTR () {
+    if (this.badGuysMovement.ltr) {
+      this.badGuyGroupLTR.children.map(badguy => (badguy.body.velocity.x = -this.badGuysMovement.velocity))
+    } else {
+      this.badGuyGroupLTR.children.map(badguy => (badguy.body.velocity.x = this.badGuysMovement.velocity))
     }
   }
 
@@ -524,6 +545,8 @@ export default class extends Phaser.State {
     this.moveHero()
     this.moveCamera()
     this.moveBadGuys()
+    this.moveBadGuysLTR()
+    this.moveBadGuysRTL()
 
     // // Collide the hero and the stars with the walls
     this.physics.arcade.collide(this.hero, this.mapLayer, this.handleLossOfLife, null, this)
@@ -538,6 +561,8 @@ export default class extends Phaser.State {
     this.physics.arcade.overlap(this.hero, this.slowDownGroup, this.handleObjectCollision, null, this)
     this.physics.arcade.overlap(this.hero, this.speedUpGroup, this.handleObjectCollision, null, this)
     this.physics.arcade.overlap(this.hero, this.badGuyGroup, this.handleLossOfLife, null, this)
+    this.physics.arcade.overlap(this.hero, this.badGuyGroupRTL, this.handleLossOfLife, null, this)
+    this.physics.arcade.overlap(this.hero, this.badGuyGroupLTR, this.handleLossOfLife, null, this)
     this.physics.arcade.overlap(this.hero, this.smallWallGroup, this.handleLossOfLife, null, this)
 
     // If hero is off screen
@@ -554,6 +579,7 @@ export default class extends Phaser.State {
     this.trail.destroy()
     this.score = 0
     this.scoreText.text = `SCORE: ${this.score}`
+    this.badGuysMovement.velocity = 40
 
     this.direction = 'down'
     this.endGame = false
@@ -602,6 +628,18 @@ export default class extends Phaser.State {
       badguy.x = (this.heroStart.x - 10)
     })
 
+    // Move bad guys too
+    this.badGuyGroupRTL.children.map(badguy => {
+      badguy.body.velocity.x = 0
+      badguy.x = (this.heroStart.x - 10)
+    })
+
+    // Move bad guys too
+    this.badGuyGroupLTR.children.map(badguy => {
+      badguy.body.velocity.x = 0
+      badguy.x = (this.heroStart.x - 10)
+    })
+
     // Tween hero in before starting...
     let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 500, Phaser.Easing.Linear.None, true, 200)
     this.add.tween(this.hero.pivot).from({x: 0, y: 20}, 500, Phaser.Easing.Elastic.Out, true, 200)
@@ -623,6 +661,7 @@ export default class extends Phaser.State {
     this.gameInPlay = false
     this.heroStart.inPosition = false
     this.speedTimerInMotion = !this.speedTimerInMotion
+    this.badGuysMovement.velocity = 0
 
     this.time.events.remove(this.textTimer)
 
@@ -847,6 +886,22 @@ export default class extends Phaser.State {
     this.badGuyGroup.children.map(badguy => (badguy.body.enable = true))
   }
 
+  // Bad guy builder
+  badGuyBuilderRTL () {
+    this.badGuyGroupRTL = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'badguy_rtl', this.objects.spritesheet, 6, true, false, this.badGuyGroupRTL)
+    this.badGuyGroupRTL.children.map(badguy => (badguy.body.enable = true))
+  }
+
+  // Bad guy builder
+  badGuyBuilderLTR () {
+    this.badGuyGroupLTR = this.add.physicsGroup()
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(this.objects.layer, 'badguy_ltr', this.objects.spritesheet, 6, true, false, this.badGuyGroupLTR)
+    this.badGuyGroupLTR.children.map(badguy => (badguy.body.enable = true))
+  }
+
   updateScore () {
     this.score = Math.floor(this.hero.y - this.heroStart.y) + this.bonusPoints
     this.scoreText.text = `SCORE: ${this.score}`
@@ -903,7 +958,8 @@ export default class extends Phaser.State {
     this.slowDownBuilder()
     this.speedUpBuilder()
     this.badGuyBuilder()
-
+    this.badGuyBuilderLTR()
+    this.badGuyBuilderRTL()
     this.scorePanelBuilder()
     this.scoreText()
     this.readyHeroOne()
@@ -916,6 +972,8 @@ export default class extends Phaser.State {
 
     // Things that move even after bad as stopped
     this.physics.arcade.collide(this.badGuyGroup, this.mapLayer, null, null, this)
+    this.physics.arcade.collide(this.badGuyGroupRTL, this.mapLayer, () => (this.badGuysMovement.rtl = !this.badGuysMovement.rtl), null, this)
+    this.physics.arcade.collide(this.badGuyGroupLTR, this.mapLayer, () => (this.badGuysMovement.ltr = !this.badGuysMovement.ltr), null, this)
 
     // If we're not already playing, and not in the game over phase, and the hero is in position, and the spacebar is pressed... *phew*
     if (!this.gameInPlay && !this.endGame && this.heroStart.inPosition && this.spacebar.isDown) {
