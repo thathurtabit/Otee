@@ -575,6 +575,7 @@ export default class extends Phaser.State {
     if (this.endGamePanelGroup) this.endGamePanelGroup.kill()
     if (this.endGameTextGroup) this.endGameTextGroup.kill()
     if (this.restartPanelBG) this.restartPanelBG.kill()
+    if (this.resetPanelBG) this.resetPanelBG.kill()
 
     this.trail.destroy()
     this.score = 0
@@ -654,7 +655,7 @@ export default class extends Phaser.State {
     })
   }
 
-  handleLossOfLife () {
+  handleLossOfLife () {    
     this.heroStart.lives -= 1
     this.endGame = true
     this.direction = null
@@ -676,35 +677,36 @@ export default class extends Phaser.State {
     //  You can set your own intensity and duration
     this.camera.shake(0.01, 500)
 
-    this.restartPanelBG = this.add.graphics(this.centerX, this.centerY)
-    this.restartPanelBG.beginFill(this.overlay.bgCol, 1)
-    this.restartPanelBG.drawCircle(0, 0, 170)
-    this.restartPanelBG.world.x = this.centerX
-    this.restartPanelBG.world.y = this.centerY
-    this.restartPanelBG.fixedToCamera = true
-    this.restartPanelBG.anchor.set(0.5)
-    this.restartPanelBG.alpha = 1
-    this.restartPanelBG.scale.x = 1
-    this.restartPanelBG.scale.y = 1
+    if (this.heroStart.lives !== 0) {
+      console.log('Lost 1 life')
+      this.resetPanelBG = this.add.graphics(this.centerX, this.centerY)
+      this.resetPanelBG.beginFill(this.overlay.bgCol, 1)
+      this.resetPanelBG.drawCircle(0, 0, 170)
+      this.resetPanelBG.world.x = this.centerX
+      this.resetPanelBG.world.y = this.centerY
+      this.resetPanelBG.fixedToCamera = true
+      this.resetPanelBG.anchor.set(0.5)
+      this.resetPanelBG.alpha = 1
+      this.resetPanelBG.scale.x = 1
+      this.resetPanelBG.scale.y = 1
 
-    this.restartInfo = this.add.text(0, 5, 'ENTER TO RESET', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
+      this.resetInfo = this.add.text(0, 5, 'ENTER TO RESET', { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.resetInfo.anchor.setTo(0.5) // set anchor to middle / center
 
-    this.restartPanelBG.addChild(this.restartInfo)
+      this.resetPanelBG.addChild(this.resetInfo)
 
-    //this.add.tween(this.restartPanelBG).to({alpha: 1}, 500, Phaser.Easing.Linear.None, true)
-    this.add.tween(this.restartPanelBG.pivot).from({x: 500}, 500, Phaser.Easing.Elastic.Out, true)
+      //this.add.tween(this.restartPanelBG).to({alpha: 1}, 500, Phaser.Easing.Linear.None, true)
+      this.add.tween(this.resetPanelBG.pivot).from({x: 500}, 500, Phaser.Easing.Elastic.Out, true)
 
-    this.restartPanelBG.fixedToCamera = true
-
-    if (this.heroStart.lives === 0) {
+      this.resetPanelBG.fixedToCamera = true
+    } else {
       this.handleGameOver()
     }
   }
 
   handleGameOver () {
+    console.log('Game over, man')
     this.gameOver = true
-    this.restartPanelBG.kill()
     // Number of Game Over panels to over on game over
     this.endGamePanelsArray = [...Array(12).keys()]
     this.endGamePanelHeight = this.camera.height / this.endGamePanelsArray.length
