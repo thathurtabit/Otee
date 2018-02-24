@@ -51,7 +51,7 @@ export default class extends Phaser.State {
       x: 196,
       y: 55,
       inPosition: false,
-      lives: 3,
+      lives: 1,
       pivot: 6
     }
     this.badGuysMovement = {
@@ -271,6 +271,7 @@ export default class extends Phaser.State {
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
+    console.log(this.scorePanel)
   }
 
   // Movement events
@@ -578,13 +579,11 @@ export default class extends Phaser.State {
     if (this.resetPanelBG) this.resetPanelBG.kill()
 
     this.trail.destroy()
-    this.score = 0
-    this.scoreText.text = `SCORE: ${this.score}`
+
     this.badGuysMovement.velocity = 40
 
     this.direction = 'down'
     this.endGame = false
-    this.bonusPoints = 0
     this.gameRules.heroSpeedCurrent = this.gameRules.heroSpeedDefault
     this.gameRules.reverseHero = false
     this.heroColor.current = this.heroColor.default
@@ -593,11 +592,19 @@ export default class extends Phaser.State {
     // If it's game over...
     if (this.gameOver) {
       // Reset
-      this.heroStart.lives = 3
+      this.heroStart.lives = 3 // TODO get rid of hard-value
       this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
       this.camera.y = 0
       this.heroStart.x = 196 // TODO get rid of hard-value
       this.heroStart.y = 55 // TODO get rid of hard-value
+
+      this.score = 0
+      this.bonusPoints = 0
+      this.scoreText.text = `SCORE: ${this.score}`
+
+      // Show top score panel
+      this.add.tween(this.scorePanel.pivot).to({y: 0}, 750, Phaser.Easing.Circular.Out, true, 300)
+
       // Reset special tiles
       this.resetSpecialTouchableItems()
       // Put hero in position
@@ -607,6 +614,10 @@ export default class extends Phaser.State {
       this.hero.x = this.heroStart.x
       this.hero.y = this.heroStart.y
       this.camera.y = this.heroStart.y - (this.camera.height / 2 - 300)
+
+      this.score = Math.floor(this.hero.y - this.heroStart.y) + this.bonusPoints
+      this.scoreText.text = `SCORE: ${this.score}`
+
       // Put hero in position
       this.readyHeroOne()
     }
@@ -655,7 +666,7 @@ export default class extends Phaser.State {
     })
   }
 
-  handleLossOfLife () {    
+  handleLossOfLife () {
     this.heroStart.lives -= 1
     this.endGame = true
     this.direction = null
@@ -707,6 +718,10 @@ export default class extends Phaser.State {
   handleGameOver () {
     console.log('Game over, man')
     this.gameOver = true
+
+    // Hide top score panel
+    this.add.tween(this.scorePanel.pivot).to({y: 50}, 750, Phaser.Easing.Circular.Out, true)
+
     // Number of Game Over panels to over on game over
     this.endGamePanelsArray = [...Array(12).keys()]
     this.endGamePanelHeight = this.camera.height / this.endGamePanelsArray.length
@@ -822,9 +837,7 @@ export default class extends Phaser.State {
     this.startPanelGroup.add(this.startPanelBG)
     this.startPanelGroup.add(this.startInfo)
 
-    this.score = 0
-
-    // Display
+    // Display Start Info
     this.add.tween(this.startPanelGroup.pivot).from({ x: 500 }, 500, Phaser.Easing.Circular.InOut, 500)
 
     // Animate while displayed
@@ -911,8 +924,8 @@ export default class extends Phaser.State {
     this.highScoreText.text = `HIGH: ${localStorage.highScore || 0}`
   }
 
-  scoreText () {
-    this.scoreText = this.add.text(10, 10, 'SCORE: 0', {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
+  updateScorePanel () {
+    this.scoreText = this.add.text(10, 10, `SCORE: ${this.score}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
     this.livesLeft = this.add.text(178, 10, `LIVES: ${this.heroStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
     this.highScoreText = this.add.text(0, 10, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
@@ -920,6 +933,9 @@ export default class extends Phaser.State {
     this.scorePanel.add(this.scoreText)
     this.scorePanel.add(this.livesLeft)
     this.scorePanel.add(this.highScoreText)
+
+    // Show top score panel
+    this.add.tween(this.scorePanel.pivot).from({y: 50}, 750, Phaser.Easing.Circular.Out, true, 300)
   }
 
   setHighScore () {
@@ -963,7 +979,7 @@ export default class extends Phaser.State {
     this.badGuyBuilderLTR()
     this.badGuyBuilderRTL()
     this.scorePanelBuilder()
-    this.scoreText()
+    this.updateScorePanel()
     this.readyHeroOne()
   }
 
