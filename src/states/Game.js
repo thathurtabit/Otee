@@ -8,9 +8,13 @@ export default class extends Phaser.State {
       font: 'Raleway'
     }
     this.score = 0
+    this.gameTime = {
+      total: 0,
+      stopped: true,
+      paused: false
+    }
     this.gameInPlay = false
     this.endGame = false
-    this.getNewStartTime = true
     this.gameOver = false
     this.direction = 'down'
     this.gameStartText = this.gameStartText
@@ -271,7 +275,6 @@ export default class extends Phaser.State {
 
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
-    console.log(this.scorePanel)
   }
 
   // Movement events
@@ -536,11 +539,12 @@ export default class extends Phaser.State {
     if (this.startPanelGroup) {
       this.startPanelGroup.kill()
     }
-    // Only required once per loop to generate total time
-    if (this.getNewStartTime) {
-      this.startTime = Date.now()
+
+    if (this.gameTimer.running !== true || this.gameTimer.paused !== true) {
+      this.gameTimer.start()
+    } else if (this.gameTimer.paused) {
+      this.gameTimer.resume()
     }
-    this.getNewStartTime = false
 
     // To move hero
     this.moveHero()
@@ -599,11 +603,13 @@ export default class extends Phaser.State {
       this.heroStart.y = 55 // TODO get rid of hard-value
 
       this.score = 0
+      this.gameTime.total = 0
+
       this.bonusPoints = 0
       this.scoreText.text = `SCORE: ${this.score}`
 
       // Show top score panel
-      this.add.tween(this.scorePanel.pivot).to({y: 0}, 750, Phaser.Easing.Circular.Out, true, 300)
+      this.add.tween(this.scorePanel.pivot).to({y: 0}, 300, Phaser.Easing.Circular.Out, true, 300)
 
       // Reset special tiles
       this.resetSpecialTouchableItems()
@@ -653,8 +659,8 @@ export default class extends Phaser.State {
     })
 
     // Tween hero in before starting...
-    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 500, Phaser.Easing.Linear.None, true, 200)
-    this.add.tween(this.hero.pivot).from({x: 0, y: 20}, 500, Phaser.Easing.Elastic.Out, true, 200)
+    let tweenheroIn = this.add.tween(this.hero).from({alpha: 0}, 1000, Phaser.Easing.Linear.None, true, 200)
+    this.add.tween(this.hero.pivot).from({x: 0, y: 100}, 1000, Phaser.Easing.Cubic.InOut, true, 200)
 
     tweenheroIn.onComplete.add(() => {
       // hero needs to be in position nefore starting
@@ -667,6 +673,7 @@ export default class extends Phaser.State {
   }
 
   handleLossOfLife () {
+    this.gameTimer.pause()
     this.heroStart.lives -= 1
     this.endGame = true
     this.direction = null
@@ -689,7 +696,6 @@ export default class extends Phaser.State {
     this.camera.shake(0.01, 500)
 
     if (this.heroStart.lives !== 0) {
-      console.log('Lost 1 life')
       this.resetPanelBG = this.add.graphics(this.centerX, this.centerY)
       this.resetPanelBG.beginFill(this.overlay.bgCol, 1)
       this.resetPanelBG.drawCircle(0, 0, 170)
@@ -716,11 +722,16 @@ export default class extends Phaser.State {
   }
 
   handleGameOver () {
-    console.log('Game over, man')
+    // Destroy the timer
+    this.gameTimer.destroy()
+
+    // Create new game timer
+    this.gameTimeBuilder()
+
     this.gameOver = true
 
     // Hide top score panel
-    this.add.tween(this.scorePanel.pivot).to({y: 50}, 750, Phaser.Easing.Circular.Out, true)
+    this.add.tween(this.scorePanel.pivot).to({y: 50}, 300, Phaser.Easing.Circular.Out, true)
 
     // Number of Game Over panels to over on game over
     this.endGamePanelsArray = [...Array(12).keys()]
@@ -747,36 +758,56 @@ export default class extends Phaser.State {
     this.endGameTextGroup.alpha = 0
     this.endGameTextGroup.fixedToCamera = true
 
-    // Get play time
-    this.totalTime = this.msToTime(Date.now() - this.startTime)
-    this.getNewStartTime = true
-
-    // Game over text
-    this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Score
-    this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `Score: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Time
-    this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `Time: ${this.totalTime} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Restart info
-    this.restartInfo = this.add.text(this.centerX, this.centerY + 50, 'Press ENTER TO RESET', { font: this.style.font, backgroundColor: 'rgba(0, 0, 0, 0.2)', fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
-    this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
-    // Add text to group
-    this.endGameTextGroup.add(this.scoreInfo)
-    this.endGameTextGroup.add(this.totalTimeInfo)
-    this.endGameTextGroup.add(this.gameOverInfo)
-    this.endGameTextGroup.add(this.restartInfo)
-
-    // Loop and apply tween to each panel
-    this.endGamePanelGroup.children.map((GOPanel, index) => {
-      this.add.tween(GOPanel).from({x: -this.camera.width}, 300, Phaser.Easing.Circular.Out, true, 100 * index)
+    // Set High Score (via a Promise)
+    let setHighScore = new Promise((resolve, reject) => {
+      // Set a hightScore localStorage variable if it hasn't already been set
+      if (localStorage.getItem('highScore') === null) {
+        localStorage.setItem('highScore', this.score)
+        resolve(this.score)
+      // If the new score is greater than the previous high score, store it
+      } else if (this.score > localStorage.getItem('highScore')) {
+        localStorage.setItem('highScore', this.score)
+        this.highScore = localStorage.highScore
+        this.highScoreText.text = `HIGH: ${this.highScore}`
+        resolve(this.highScore)
+      }
     })
 
-    this.add.tween(this.endGameTextGroup).to({alpha: 1}, 250, 'Linear', true)
+    // Wrap inside a promise
+    setHighScore.then(highScorePromise => {
+      // Game over text
+      this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
+      // Score
+      this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `TOTAL SCORE: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
+      // Time
+      this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `TOTAL TIME: ${this.msToTime(this.gameTime.total)}`, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
+      // Items Collected
+      this.totalItemsInfo = this.add.text(this.centerX - 100, this.centerY + 45, `ITEMS: 0/10`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.totalItemsInfo.anchor.setTo(0.5) // set anchor to middle / center
+      // High Score
+      this.highScoreInfo = this.add.text(this.centerX + 100, this.centerY + 45, `HIGH SCORE: ${highScorePromise}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.highScoreInfo.anchor.setTo(0.5) // set anchor to middle / center
+      // Restart info
+      this.restartInfo = this.add.text(this.centerX, this.centerY + 80, 'ENTER TO RESET', { font: this.style.font, fontSize: '18px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
+      // Add text to group
+      this.endGameTextGroup.add(this.scoreInfo)
+      this.endGameTextGroup.add(this.totalTimeInfo)
+      this.endGameTextGroup.add(this.totalItemsInfo)
+      this.endGameTextGroup.add(this.gameOverInfo)
+      this.endGameTextGroup.add(this.highScoreInfo)
+      this.endGameTextGroup.add(this.restartInfo)
 
-    this.setHighScore()
+      // Loop and apply tween to each panel
+      this.endGamePanelGroup.children.map((GOPanel, index) => {
+        this.add.tween(GOPanel).from({x: -this.camera.width}, 300, Phaser.Easing.Circular.Out, true, 100 * index)
+      })
+
+      this.add.tween(this.endGameTextGroup).to({alpha: 1}, 250, 'Linear', true)
+    }).catch(() => console.log('High Score Promise Error'))
   }
 
   msToTime (ms) {
@@ -917,6 +948,16 @@ export default class extends Phaser.State {
     this.badGuyGroupLTR.children.map(badguy => (badguy.body.enable = true))
   }
 
+  gameTimeBuilder () {
+    const updateTime = () => {
+      this.gameTime.total += 100
+    }
+    //  Create our Timer
+    //  It won't start automatically, allowing you to hook it to button events and the like.
+    this.gameTimer = this.game.time.create(false)
+    this.gameTimer.loop(100, updateTime, this)
+  }
+
   updateScore () {
     this.score = Math.floor(this.hero.y - this.heroStart.y) + this.bonusPoints
     this.scoreText.text = `SCORE: ${this.score}`
@@ -935,20 +976,7 @@ export default class extends Phaser.State {
     this.scorePanel.add(this.highScoreText)
 
     // Show top score panel
-    this.add.tween(this.scorePanel.pivot).from({y: 50}, 750, Phaser.Easing.Circular.Out, true, 300)
-  }
-
-  setHighScore () {
-    this.startTime = 0
-    // Set a hightScore localStorage variable if it hasn't already been set
-    if (localStorage.getItem('highScore') === null) {
-      localStorage.setItem('highScore', this.score)
-    // If the new score is greater than the previous high score, store it
-    } else if (this.score > localStorage.getItem('highScore')) {
-      localStorage.setItem('highScore', this.score)
-      this.highScore = localStorage.highScore
-      this.highScoreText.text = `HIGH: ${this.highScore}`
-    }
+    this.add.tween(this.scorePanel.pivot).from({y: 50}, 300, Phaser.Easing.Circular.Out, true, 300)
   }
 
   // CREATE THE THINGS
@@ -969,6 +997,7 @@ export default class extends Phaser.State {
     this.bonus1Group = this.add.group()
     this.bonus2Group = this.add.group()
 
+    this.gameTimeBuilder()
     this.smallWallBuilder()
     this.bonus1Builder()
     this.bonus2Builder()
@@ -1020,6 +1049,7 @@ export default class extends Phaser.State {
 
   render () {
     if (__DEV__) {
+      this.game.debug.text(`Time elapsed: ${this.msToTime(this.gameTime.total)}`, 100, 100)
       // this.game.debug.cameraInfo(this.camera, 32, 32)
       // this.game.debug.spriteCoords(this.hero, 32, 500)
       //this.game.debug.body(this.hero)
