@@ -8,6 +8,7 @@ export default class extends Phaser.State {
       font: 'Raleway'
     }
     this.score = 0
+    this.highScore = localStorage.highScore
     this.gameTime = {
       total: 0,
       stopped: true,
@@ -31,7 +32,9 @@ export default class extends Phaser.State {
       layer: 'otee-objects-layer',
       spritesheet: 'objects',
       width: 25,
-      height: 25
+      height: 25,
+      count: 0,
+      collected: 0
     }
     this.panel = {
       bgCol: 0xffd670,
@@ -54,6 +57,7 @@ export default class extends Phaser.State {
     this.heroStart = {
       x: 196,
       y: 55,
+      originalY: 55,
       inPosition: false,
       lives: 1,
       pivot: 6
@@ -273,8 +277,22 @@ export default class extends Phaser.State {
     scoreBg.drawRect(0, 0, this.camera.width, 35)
     scoreBg.alpha = 0.95
 
+    // Draw heart
+
+    let heart = this.add.graphics(this.centerX - 13.5, 4)
+    heart.beginFill(0xEE5B5B, 1)
+    heart.moveTo(75, 40)
+    heart.bezierCurveTo(75, 37, 70, 25, 50, 25)
+    heart.bezierCurveTo(20, 25, 20, 62.5, 20, 62.5)
+    heart.bezierCurveTo(20, 80, 40, 102, 75, 120)
+    heart.bezierCurveTo(110, 102, 130, 80, 130, 62.5)
+    heart.bezierCurveTo(130, 62.5, 130, 25, 100, 25)
+    heart.bezierCurveTo(85, 25, 75, 37, 75, 40)
+    heart.scale.setTo(0.18, 0.18)
+
     // use the bitmap data as the texture for the sprite
     this.scorePanel.add(scoreBg)
+    this.scorePanel.add(heart)
   }
 
   // Movement events
@@ -430,6 +448,7 @@ export default class extends Phaser.State {
     let text
     let heroSpeed = this.gameRules.heroSpeedCurrent
     let bonusPoints = 0
+    this.objects.collected += 1
 
     switch (name) {
       case 'bonus1':
@@ -597,13 +616,14 @@ export default class extends Phaser.State {
     if (this.gameOver) {
       // Reset
       this.heroStart.lives = 3 // TODO get rid of hard-value
-      this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
+      this.livesLeft.text = `${this.heroStart.lives}`
       this.camera.y = 0
       this.heroStart.x = 196 // TODO get rid of hard-value
-      this.heroStart.y = 55 // TODO get rid of hard-value
+      this.heroStart.y = this.heroStart.originalY
 
       this.score = 0
       this.gameTime.total = 0
+      this.objects.collected = 0
 
       this.bonusPoints = 0
       this.scoreText.text = `SCORE: ${this.score}`
@@ -621,7 +641,7 @@ export default class extends Phaser.State {
       this.hero.y = this.heroStart.y
       this.camera.y = this.heroStart.y - (this.camera.height / 2 - 300)
 
-      this.score = Math.floor(this.hero.y - this.heroStart.y) + this.bonusPoints
+      this.score = Math.floor(this.hero.y + this.bonusPoints) - this.heroStart.originalY
       this.scoreText.text = `SCORE: ${this.score}`
 
       // Put hero in position
@@ -684,7 +704,7 @@ export default class extends Phaser.State {
 
     this.time.events.remove(this.textTimer)
 
-    this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
+    this.livesLeft.text = `${this.heroStart.lives}`
 
     this.showHeroText('OUCH', 1000)
 
@@ -765,10 +785,12 @@ export default class extends Phaser.State {
         localStorage.setItem('highScore', this.score)
         resolve(this.score)
       // If the new score is greater than the previous high score, store it
-      } else if (this.score > localStorage.getItem('highScore')) {
+      } else if (this.score >= localStorage.getItem('highScore')) {
         localStorage.setItem('highScore', this.score)
         this.highScore = localStorage.highScore
         this.highScoreText.text = `HIGH: ${this.highScore}`
+        resolve(this.score)
+      } else {
         resolve(this.highScore)
       }
     })
@@ -779,16 +801,16 @@ export default class extends Phaser.State {
       this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Score
-      this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `TOTAL SCORE: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `SCORE: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Time
-      this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 22, `TOTAL TIME: ${this.msToTime(this.gameTime.total)}`, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 45, `TIME: ${this.msToTime(this.gameTime.total)}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Items Collected
-      this.totalItemsInfo = this.add.text(this.centerX - 100, this.centerY + 45, `ITEMS: 0/10`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.totalItemsInfo = this.add.text(this.centerX - 100, this.centerY + 45, `ITEMS: ${this.objects.collected}/${this.objects.count}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.totalItemsInfo.anchor.setTo(0.5) // set anchor to middle / center
       // High Score
-      this.highScoreInfo = this.add.text(this.centerX + 100, this.centerY + 45, `HIGH SCORE: ${highScorePromise}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.highScoreInfo = this.add.text(this.centerX + 100, this.centerY + 45, `HIGH: ${highScorePromise}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.highScoreInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Restart info
       this.restartInfo = this.add.text(this.centerX, this.centerY + 80, 'ENTER TO RESET', { font: this.style.font, fontSize: '18px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
@@ -806,7 +828,8 @@ export default class extends Phaser.State {
         this.add.tween(GOPanel).from({x: -this.camera.width}, 300, Phaser.Easing.Circular.Out, true, 100 * index)
       })
 
-      this.add.tween(this.endGameTextGroup).to({alpha: 1}, 250, 'Linear', true)
+      this.add.tween(this.endGameTextGroup.pivot).from({x: -100}, 250, 'Linear', true, 500)
+      this.add.tween(this.endGameTextGroup).to({alpha: 1}, 250, 'Linear', true, 500)
     }).catch(() => console.log('High Score Promise Error'))
   }
 
@@ -959,15 +982,16 @@ export default class extends Phaser.State {
   }
 
   updateScore () {
-    this.score = Math.floor(this.hero.y - this.heroStart.y) + this.bonusPoints
+    this.score = Math.floor(this.hero.y + this.bonusPoints) - this.heroStart.originalY
     this.scoreText.text = `SCORE: ${this.score}`
-    this.livesLeft.text = `LIVES: ${this.heroStart.lives}`
+    this.livesLeft.text = `${this.heroStart.lives}`
     this.highScoreText.text = `HIGH: ${localStorage.highScore || 0}`
   }
 
   updateScorePanel () {
     this.scoreText = this.add.text(10, 10, `SCORE: ${this.score}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol})
-    this.livesLeft = this.add.text(178, 10, `LIVES: ${this.heroStart.lives}`, {font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'center', boundsAlignH: 'center'})
+    this.livesLeft = this.add.text(this.centerX, 19, `${this.heroStart.lives}`, {font: this.style.font, fontSize: '11px', fill: '#fff', align: 'center', boundsAlignH: 'center'})
+    this.livesLeft.anchor.setTo(0.5)
     this.highScoreText = this.add.text(0, 10, `HIGH: ${localStorage.highScore || 0}`, { font: this.style.font, fontSize: '12px', fill: this.panel.textCol, align: 'right', boundsAlignH: 'right', wordWrapWidth: 20 })
     this.highScoreText.setTextBounds(0, 0, this.camera.width - 10, 0)
 
@@ -999,17 +1023,26 @@ export default class extends Phaser.State {
 
     this.gameTimeBuilder()
     this.smallWallBuilder()
+
     this.bonus1Builder()
     this.bonus2Builder()
     this.oneUpBuilder()
+
     this.slowDownBuilder()
     this.speedUpBuilder()
+
     this.badGuyBuilder()
     this.badGuyBuilderLTR()
     this.badGuyBuilderRTL()
+
     this.scorePanelBuilder()
     this.updateScorePanel()
     this.readyHeroOne()
+
+    // Count items
+    this.objects.count = (this.bonus1Group.children.length + this.bonus1Group.children.length + this.oneUpGroup.children.length)
+    console.log(`Objects to collect: ${this.objects.count}`)
+
   }
 
   update () {
@@ -1049,7 +1082,7 @@ export default class extends Phaser.State {
 
   render () {
     if (__DEV__) {
-      this.game.debug.text(`Time elapsed: ${this.msToTime(this.gameTime.total)}`, 100, 100)
+      //this.game.debug.text(`Time elapsed: ${this.msToTime(this.gameTime.total)}`, 100, 100)
       // this.game.debug.cameraInfo(this.camera, 32, 32)
       // this.game.debug.spriteCoords(this.hero, 32, 500)
       //this.game.debug.body(this.hero)
