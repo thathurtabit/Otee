@@ -45,7 +45,8 @@ export default class extends Phaser.State {
       bgCol: 0xFFD670,
       bgCol2: 0x8777f9,
       bgCol3: 0x16B77F,
-      textCol: '#8777f9'
+      textCol: '#8777f9',
+      textCol2: '#FFFFFF'
     }
     this.heroColor = {
       current: 0xFF7F66,
@@ -615,7 +616,7 @@ export default class extends Phaser.State {
     // If it's game over...
     if (this.gameOver) {
       // Reset
-      this.heroStart.lives = 3 // TODO get rid of hard-value
+      this.heroStart.lives = 1 // TODO get rid of hard-value
       this.livesLeft.text = `${this.heroStart.lives}`
       this.camera.y = 0
       this.heroStart.x = 196 // TODO get rid of hard-value
@@ -732,7 +733,6 @@ export default class extends Phaser.State {
 
       this.resetPanelBG.addChild(this.resetInfo)
 
-      //this.add.tween(this.restartPanelBG).to({alpha: 1}, 500, Phaser.Easing.Linear.None, true)
       this.add.tween(this.resetPanelBG.pivot).from({x: 500}, 500, Phaser.Easing.Elastic.Out, true)
 
       this.resetPanelBG.fixedToCamera = true
@@ -773,10 +773,20 @@ export default class extends Phaser.State {
       this.endGamePanelGroup.add(GOPanel)
     })
 
+    // Draw panel graphics
+    let GOTextBgShape = this.add.graphics(0, 0)
+    GOTextBgShape.beginFill(this.overlay.bgCol2, 1)
+    GOTextBgShape.moveTo(-100, this.centerY - 150)
+    GOTextBgShape.lineTo(this.centerX * 3, this.centerY)
+    GOTextBgShape.lineTo(this.centerX - 50, this.centerY + 200)
+    GOTextBgShape.endFill()
+    GOTextBgShape.anchor.set(0.5)
+
     // Create Group for Text
     this.endGameTextGroup = this.add.group()
     this.endGameTextGroup.alpha = 0
     this.endGameTextGroup.fixedToCamera = true
+    this.endGameTextGroup.add(GOTextBgShape)
 
     // Set High Score (via a Promise)
     let setHighScore = new Promise((resolve, reject) => {
@@ -798,22 +808,22 @@ export default class extends Phaser.State {
     // Wrap inside a promise
     setHighScore.then(highScorePromise => {
       // Game over text
-      this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.gameOverInfo = this.add.text(this.centerX, this.centerY - 40, 'GAME OVER', { font: this.style.font, fontSize: '25px', fill: this.overlay.textCol2, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.gameOverInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Score
-      this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `SCORE: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.scoreInfo = this.add.text(this.centerX, this.centerY - 5, `SCORE: ${this.score} `, { font: this.style.font, fontSize: '15px', fill: this.overlay.textCol2, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.scoreInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Time
-      this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 45, `TIME: ${this.msToTime(this.gameTime.total)}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.totalTimeInfo = this.add.text(this.centerX, this.centerY + 45, `TIME: ${this.msToTime(this.gameTime.total)}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol2, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.totalTimeInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Items Collected
-      this.totalItemsInfo = this.add.text(this.centerX - 100, this.centerY + 45, `ITEMS: ${this.objects.collected}/${this.objects.count}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.totalItemsInfo = this.add.text(this.centerX - 100, this.centerY + 45, `ITEMS: ${this.objects.collected}/${this.objects.count}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol2, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.totalItemsInfo.anchor.setTo(0.5) // set anchor to middle / center
       // High Score
-      this.highScoreInfo = this.add.text(this.centerX + 100, this.centerY + 45, `HIGH: ${highScorePromise}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.highScoreInfo = this.add.text(this.centerX + 100, this.centerY + 45, `HIGH: ${highScorePromise}`, { font: this.style.font, fontSize: '12px', fill: this.overlay.textCol2, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.highScoreInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Restart info
-      this.restartInfo = this.add.text(this.centerX, this.centerY + 80, 'ENTER TO RESET', { font: this.style.font, fontSize: '18px', fill: this.overlay.textCol, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
+      this.restartInfo = this.add.text(this.centerX, this.centerY + 80, 'ENTER TO RESET', { font: this.style.font, fontSize: '18px', fill: this.overlay.textCol2, align: 'center', boundsAlignH: 'center', boundsAlignV: 'middle' })
       this.restartInfo.anchor.setTo(0.5) // set anchor to middle / center
       // Add text to group
       this.endGameTextGroup.add(this.scoreInfo)
