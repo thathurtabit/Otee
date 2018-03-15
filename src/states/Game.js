@@ -785,8 +785,8 @@ export default class extends Phaser.State {
     // Draw panel graphics
     let GOTextBgShape2 = this.add.graphics(0, 0)
     GOTextBgShape2.beginFill(this.overlay.bgCol3, 1)
-    GOTextBgShape2.moveTo(this.centerY + 100, this.centerY - 200)
-    GOTextBgShape2.lineTo(this.centerX, this.centerY + 200)
+    GOTextBgShape2.moveTo(this.centerX - 100, this.centerY - 200)
+    GOTextBgShape2.lineTo(this.centerX + 300, this.centerY + 200)
     GOTextBgShape2.lineTo(this.centerX - 200, this.centerY + 100)
     GOTextBgShape2.endFill()
     GOTextBgShape2.anchor.set(0.5)
