@@ -50,7 +50,9 @@ export default class extends Phaser.State {
       bgCol5: 0xffffff,
       textCol: "#8777f9",
       textCol2: "#FFFFFF",
-      textCol3: "#333333"
+      textCol3: "#333333",
+      success: 0x4BDDB6,
+      error: 0xEE5B5B
     };
     this.heroColor = {
       current: 0xff7f66,
@@ -80,6 +82,7 @@ export default class extends Phaser.State {
       heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
       triggerCameraHeight: 250,
+      heroSpeedIncrement: 5,
       reverseHero: false,
       speedTimer: 3
     };
@@ -93,8 +96,8 @@ export default class extends Phaser.State {
     };
     this.textOverlayStyle = {
       font: this.style.font,
-      fontSize: "18px",
-      fill: this.panel.textCol,
+      fontSize: "17px",
+      fill: this.overlay.textCol,
       align: "center",
       boundsAlignH: "center",
       boundsAlignV: "middle"
@@ -145,14 +148,9 @@ export default class extends Phaser.State {
   handleTileCollision(sprite, tile) {
     const tileCollided = tile;
     let text;
-    let heroSpeed = this.gameRules.heroSpeedCurrent;
     let tileAlpha = 0.3;
 
     switch (tileCollided.index) {
-      case 1:
-        text = "SLOW DOWN";
-        heroSpeed = 100;
-        break;
       case 2:
         tileAlpha = 0.9;
         break;
@@ -171,7 +169,6 @@ export default class extends Phaser.State {
 
     // Change opacity down
     tileCollided.alpha = tileAlpha;
-    this.gameRules.heroSpeedCurrent = heroSpeed;
     this.mapLayer.dirty = true;
 
     // Tiles to be reset for each death go here
@@ -484,6 +481,54 @@ export default class extends Phaser.State {
     }
   }
 
+  handleSpeedTimer(speedType, speedChangedTo) {
+    // Toggle speed timer allowence
+    this.speedTimerInMotion = !this.speedTimerInMotion;
+
+    // Incrementally increase or decrease player speed
+    const incDecHeroSpeed = (speedType, speedChangedTo) => {
+      // Loop speed and increment value
+      const incDecIntervalMs = 100;
+      const incDecValue = this.gameRules.heroSpeedIncrement;
+
+      // Show notification
+      this.showGameNotification(speedType);
+
+      // Change the speed of the player based on the object collided with
+      this.gameRules.heroSpeedCurrent = speedChangedTo;
+
+      // Update hero speed gradually via timed loop
+      const updateHeroSpeed = () => {
+        // If we're not already at regular speed...
+        if (this.gameRules.heroSpeedCurrent !== this.gameRules.heroSpeedDefault) {
+          if (speedType === 'slow') {
+            this.gameRules.heroSpeedCurrent += incDecValue;
+          } else if (speedType === 'fast') {
+            this.gameRules.heroSpeedCurrent -= incDecValue;
+          }
+        } else {
+          // Else if the hero is moving at regular speed, remove timer
+          this.time.events.remove(this.incDecTimer);
+          this.removeGameNotification();
+        }
+      }
+
+      //  Create our Timer
+      this.incDecTimer = this.game.time.create(false);
+      this.incDecTimer.start();
+
+      //  Set a TimerEvent to occur
+      this.incDecTimer.loop(incDecIntervalMs, updateHeroSpeed, this);
+  }
+
+    // CHECK SPEED TYPE AND RUN FUNCTION
+    if (speedType === 'fast') {
+      incDecHeroSpeed(speedType, speedChangedTo);
+    } else if (speedType === 'slow') {
+      incDecHeroSpeed(speedType, speedChangedTo);
+    }
+  }
+
   // Handle Object Collision
   handleObjectCollision(hero, object) {
     const {name} = object;
@@ -506,12 +551,11 @@ export default class extends Phaser.State {
         this.heroStart.lives += 1;
         break;
       case "fast":
-        heroSpeed = 200;
+        heroSpeed = 250;
         break;
       case "slow":
-        heroSpeed = 100;
+        heroSpeed = 70;
         break;
-
       default:
         break;
     }
@@ -521,13 +565,11 @@ export default class extends Phaser.State {
 
     // Add bonus to total
     this.bonusPoints += bonusPoints;
-
-    this.gameRules.heroSpeedCurrent = heroSpeed;
-
+  
     // Tiles to be reset for each death go here
-    if (name === "slow" || name === "fast") {
+    if (name === 'slow' || name === 'fast') {
       if (!this.speedTimerInMotion) {
-        this.handleSpeedTimer(name);
+        this.handleSpeedTimer(name, heroSpeed);
       }
       // Add the touched tile to an array
       this.touchableObjects.push(object);
@@ -551,73 +593,64 @@ export default class extends Phaser.State {
   }
 
   // Generic handler for all hover text
-  showHeroTextFollow(textToDisplay, lifespan) {
-    this.textInfoFollow = this.add.text(
-      0,
-      0,
-      textToDisplay,
-      this.textOverlayStyle
-    );
-    this.textInfoFollow.anchor.setTo(0.5); // set anchor to middle / center
-    this.textInfoFollow.lifespan = lifespan;
-    this.textInfoFollow.x = this.centerX;
-    this.textInfoFollow.y = this.centerY;
-    this.textInfoFollow.fixedToCamera = true;
-  }
+  showGameNotification(textToDisplay) {
+    let msgText;
+    let msgTextCol;
+    let msgTextBg;
 
-  handleSpeedTimer(speedType) {
-    // Toggle speed timer allowence
-    this.speedTimerInMotion = !this.speedTimerInMotion;
-
-    let speedText;
-
-    if (speedType === "fast") {
-      speedText = `Speeded for: `;
-    } else if (speedType === "slow") {
-      speedText = `Slowed for: `;
+    // If it already exists, destroy it and create anew
+    if (this.gameNotificationTextBG) {
+      this.removeGameNotification();
     }
 
-    // 'setTimeout' event for turning off player speed changes
-    const setSpeedTimeout = this.time.events.add(
-      Phaser.Timer.SECOND * this.gameRules.speedTimer,
-      () => {
-        this.gameRules.heroSpeedCurrent = 180;
-        this.time.events.remove(setSpeedTimeout);
-      },
-      this
+    if (textToDisplay === 'fast') {
+      msgText = 'SPEED UP';
+      msgTextCol = this.overlay.textCol;
+      msgTextBg = this.overlay.bgCol;
+    } else if (textToDisplay === 'slow') {
+      msgText = 'SLOW DOWN';
+      msgTextCol = this.overlay.textCol2;
+      msgTextBg = this.overlay.error;
+    } else {
+      msgText = textToDisplay;
+      msgTextCol = this.overlay.textCol;
+      msgTextBg = this.overlay.bgCol;
+    }
+
+    this.gameNotificationText = this.add.text(
+      0,
+      5,
+      msgText,
+      {
+        font: this.style.font,
+        fontSize: "14px",
+        fill: msgTextCol,
+        align: "center",
+        boundsAlignH: "center",
+        boundsAlignV: "middle"
+      }
     );
+    this.gameNotificationText.anchor.setTo(0.5); // set anchor to middle / center
 
-    // Set initial counter length
-    let totalTime = Phaser.Timer.SECOND * this.gameRules.speedTimer;
+    this.gameNotificationTextBG = this.add.graphics(this.centerX, this.centerY);
+      this.gameNotificationTextBG.beginFill(msgTextBg, 1);
+      this.gameNotificationTextBG.drawCircle(0, 0, 100);
+      this.gameNotificationTextBG.x = this.centerX;
+      this.gameNotificationTextBG.y = this.centerY + 100;
+      this.gameNotificationTextBG.fixedToCamera = true;
+      this.gameNotificationTextBG.alpha = 0.95;
+      this.gameNotificationTextBG.anchor.set(0.5);
+    
+      this.gameNotificationTextBG.addChild(this.gameNotificationText);
 
-    // Looped timer
-    const updateCounter = () => {
-      totalTime -= Phaser.Timer.SECOND;
+      this.add
+        .tween(this.gameNotificationTextBG.pivot)
+        .from({ x: 500 }, 500, Phaser.Easing.Elastic.Out, true);
+  }
 
-      // Show text
-      this.showHeroTextFollow(
-        speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`),
-        Phaser.Timer.SECOND
-      );
-
-      // If timed out, remove counter
-      if (totalTime <= Phaser.Timer.SECOND)
-        this.time.events.remove(this.textTimer);
-    };
-
-    // On collide, show this first, (to be replaced in the loop)
-    this.showHeroTextFollow(
-      speedText.concat(`${totalTime / Phaser.Timer.SECOND}s`),
-      Phaser.Timer.SECOND
-    );
-
-    // https://phaser.io/examples/v2/time/custom-timer
-    // Create looped timer
-    this.textTimer = this.time.events.loop(
-      Phaser.Timer.SECOND,
-      updateCounter,
-      this
-    );
+  removeGameNotification() {
+    const tweenOut = this.add.tween(this.gameNotificationTextBG.pivot).to({ x: -500 }, 500, Phaser.Easing.Elastic.Out, true);
+    tweenOut.onComplete.add(() => (this.gameNotificationTextBG.destroy()));
   }
 
   handleGameInPlay() {
@@ -835,6 +868,7 @@ export default class extends Phaser.State {
     this.heroStart.inPosition = false;
     this.speedTimerInMotion = !this.speedTimerInMotion;
     this.badGuysMovement.velocity = 0;
+    this.removeGameNotification();
 
     this.time.events.remove(this.textTimer);
 
@@ -1156,14 +1190,7 @@ export default class extends Phaser.State {
       this.centerX,
       this.centerY + 5,
       "SPACEBAR TO START",
-      {
-        font: this.style.font,
-        fontSize: "17px",
-        fill: this.overlay.textCol,
-        align: "center",
-        boundsAlignH: "center",
-        boundsAlignV: "middle"
-      }
+      this.textOverlayStyle
     );
     this.startInfo.anchor.setTo(0.5); // set anchor to middle / center
 
@@ -1451,7 +1478,6 @@ export default class extends Phaser.State {
       this.bonus1Group.children.length +
       this.bonus1Group.children.length +
       this.oneUpGroup.children.length;
-    console.log(`Objects to collect: ${this.objects.count}`);
   }
 
   update() {
