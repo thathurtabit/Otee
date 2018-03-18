@@ -598,10 +598,7 @@ export default class extends Phaser.State {
     let msgTextCol;
     let msgTextBg;
 
-    // If it already exists, destroy it and create anew
-    if (this.gameNotificationTextBG) {
-      this.removeGameNotification();
-    }
+    this.removeGameNotification();
 
     if (textToDisplay === 'fast') {
       msgText = 'SPEED UP';
@@ -649,8 +646,11 @@ export default class extends Phaser.State {
   }
 
   removeGameNotification() {
-    const tweenOut = this.add.tween(this.gameNotificationTextBG.pivot).to({ x: -500 }, 500, Phaser.Easing.Elastic.Out, true);
-    tweenOut.onComplete.add(() => (this.gameNotificationTextBG.destroy()));
+    // If it already exists, destroy it and create anew
+    if (this.gameNotificationTextBG) {
+      const tweenOut = this.add.tween(this.gameNotificationTextBG.pivot).to({ x: -500 }, 500, Phaser.Easing.Elastic.Out, true);
+      tweenOut.onComplete.add(() => (this.gameNotificationTextBG.destroy()));
+    }
   }
 
   handleGameInPlay() {
