@@ -66,13 +66,11 @@ export default class extends Phaser.State {
       y: 55,
       originalY: 55,
       inPosition: false,
-      lives: 1,
+      lives: 3,
       pivot: 6
     };
     this.badGuysMovement = {
-      velocity: 30,
-      rtl: true,
-      ltr: true
+      velocity: 50,
     };
     this.speedTimerInMotion = false;    
     this.gameRules = {
@@ -325,7 +323,7 @@ export default class extends Phaser.State {
 
     // Reset the reversing back to normal
     const resetReverse = () => {
-      this.gameRules.reverseHero = false;
+      if (this.gameRules.reverseHero) this.gameRules.reverseHero = false;
     };
 
     //  Reset the heros velocity (keyboardEvents)
@@ -363,30 +361,6 @@ export default class extends Phaser.State {
         badguy =>
           (badguy.body.velocity.x =
             this.hero.x - (this.hero.body.velocity.x - 20))
-      );
-    }
-  }
-
-  moveBadGuysRTL() {
-    if (this.badGuysMovement.rtl) {
-      this.badGuyGroupRTL.children.map(
-        badguy => (badguy.body.velocity.x = this.badGuysMovement.velocity)
-      );
-    } else {
-      this.badGuyGroupRTL.children.map(
-        badguy => (badguy.body.velocity.x = -this.badGuysMovement.velocity)
-      );
-    }
-  }
-
-  moveBadGuysLTR() {
-    if (this.badGuysMovement.ltr) {
-      this.badGuyGroupLTR.children.map(
-        badguy => (badguy.body.velocity.x = -this.badGuysMovement.velocity)
-      );
-    } else {
-      this.badGuyGroupLTR.children.map(
-        badguy => (badguy.body.velocity.x = this.badGuysMovement.velocity)
       );
     }
   }
@@ -492,8 +466,6 @@ export default class extends Phaser.State {
       const incDecIntervalMs = 100;
       const incDecValue = this.gameRules.heroSpeedIncrement;
 
-      console.log('IncDecHeroSpeed');
-
       // Show notification
       this.showGameNotification(speedType);
 
@@ -568,8 +540,6 @@ export default class extends Phaser.State {
     // Handle the text update
     this.showHeroText(text, 400);
 
-    console.log(`${name} hit`);
-
     // Add bonus to total
     this.bonusPoints += bonusPoints;
   
@@ -606,8 +576,6 @@ export default class extends Phaser.State {
     let msgTextBg;
 
     this.removeGameNotification();
-
-    console.log('showing game notification');
 
     // If it's not already showing...
     if (!this.gameNotificationShowing) {
@@ -666,14 +634,12 @@ export default class extends Phaser.State {
       // Destroy all timers in array via loop
       for (let i=0; i<this.timerEvents.length; i+=1){
         this.game.time.events.remove(this.timerEvents[i]);
-        console.log('removing timer');
       }
       this.speedTimerInMotion = false;
       this.gameNotificationShowing = false;   
       const tweenOut = this.add.tween(this.gameNotificationTextBG.pivot).to({ x: -500 }, 500, Phaser.Easing.Elastic.Out, true);
       tweenOut.onComplete.add(() => {
         this.gameNotificationTextBG.kill();
-        console.log('killed game notification');
       });
       
     }
@@ -695,8 +661,8 @@ export default class extends Phaser.State {
     this.moveHero();
     this.moveCamera();
     this.moveBadGuys();
-    this.moveBadGuysLTR();
-    this.moveBadGuysRTL();
+    // this.moveBadGuysLTR();
+    // this.moveBadGuysRTL();
 
     // // Collide the hero and the stars with the walls
     this.physics.arcade.collide(
@@ -857,13 +823,11 @@ export default class extends Phaser.State {
 
     // Move bad guys too
     this.badGuyGroupRTL.children.map(badguy => {
-      badguy.body.velocity.x = 0;
       badguy.x = this.heroStart.x - 10;
     });
 
     // Move bad guys too
     this.badGuyGroupLTR.children.map(badguy => {
-      badguy.body.velocity.x = 0;
       badguy.x = this.heroStart.x - 10;
     });
 
@@ -1353,12 +1317,11 @@ export default class extends Phaser.State {
       this.objects.layer,
       "badguy",
       this.objects.spritesheet,
-      6,
+      7,
       true,
       false,
       this.badGuyGroup
     );
-    this.badGuyGroup.children.map(badguy => (badguy.body.enable = true));
   }
 
   // Bad guy builder
@@ -1374,7 +1337,13 @@ export default class extends Phaser.State {
       false,
       this.badGuyGroupRTL
     );
-    this.badGuyGroupRTL.children.map(badguy => (badguy.body.enable = true));
+    this.badGuyGroupRTL.children.map(badguy => {
+      const badGuyMapped = badguy;
+      badGuyMapped.body.collideWorldBounds = true;
+      badGuyMapped.body.enable = true;
+      badGuyMapped.body.bounce.setTo(1,1);
+      badGuyMapped.body.velocity.x = +this.badGuysMovement.velocity;
+    });
   }
 
   // Bad guy builder
@@ -1389,8 +1358,14 @@ export default class extends Phaser.State {
       true,
       false,
       this.badGuyGroupLTR
-    );
-    this.badGuyGroupLTR.children.map(badguy => (badguy.body.enable = true));
+    );    
+    this.badGuyGroupLTR.children.map(badguy => {
+      const badGuyMapped = badguy;
+      badGuyMapped.body.collideWorldBounds = true;
+      badGuyMapped.body.enable = true;
+      badGuyMapped.body.bounce.setTo(1,1); 
+      badGuyMapped.body.velocity.x = -this.badGuysMovement.velocity;
+    });
   }
 
   gameTimeBuilder() {
@@ -1511,7 +1486,7 @@ export default class extends Phaser.State {
     this.enter = this.input.keyboard.addKey(Phaser.Keyboard.ENTER);
     this.enterNumpad = this.input.keyboard.addKey(Phaser.Keyboard.NUMPAD_ENTER);
 
-    // Things that move even after bad as stopped
+    // collide(object1, object2, collideCallback, processCallback, callbackContext) 
     this.physics.arcade.collide(
       this.badGuyGroup,
       this.mapLayer,
@@ -1519,17 +1494,19 @@ export default class extends Phaser.State {
       null,
       this
     );
+    // collide(object1, object2, collideCallback, processCallback, callbackContext) 
     this.physics.arcade.collide(
       this.badGuyGroupRTL,
       this.mapLayer,
-      () => (this.badGuysMovement.rtl = !this.badGuysMovement.rtl),
+      null,
       null,
       this
     );
+    // collide(object1, object2, collideCallback, processCallback, callbackContext) 
     this.physics.arcade.collide(
       this.badGuyGroupLTR,
       this.mapLayer,
-      () => (this.badGuysMovement.ltr = !this.badGuysMovement.ltr),
+      null,
       null,
       this
     );
