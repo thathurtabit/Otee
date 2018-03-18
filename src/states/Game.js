@@ -19,8 +19,8 @@ export default class extends Phaser.State {
     this.endGame = false;
     this.gameOver = false;
     this.direction = "down";
-    this.gameStartText = this.gameStartText;
     this.heroSize = 16;
+    this.timerEvents = [];
     this.touchableTiles = [];
     this.specialTouchableTiles = [];
     this.touchableObjects = [];
@@ -74,7 +74,7 @@ export default class extends Phaser.State {
       rtl: true,
       ltr: true
     };
-    this.speedTimerInMotion = false;
+    this.speedTimerInMotion = false;    
     this.gameRules = {
       gameSpeed: 1,
       heroSpeedDefault: 180,
@@ -82,7 +82,7 @@ export default class extends Phaser.State {
       heroSpeedSlow: 160,
       heroSpeedCurrent: 180,
       triggerCameraHeight: 250,
-      heroSpeedIncrement: 5,
+      heroSpeedIncrement: 2,
       reverseHero: false,
       speedTimer: 3
     };
@@ -102,6 +102,7 @@ export default class extends Phaser.State {
       boundsAlignH: "center",
       boundsAlignV: "middle"
     };
+    this.gameNotificationShowing = false;
     this.bonusPoints = 0;
   }
 
@@ -483,13 +484,15 @@ export default class extends Phaser.State {
 
   handleSpeedTimer(speedType, speedChangedTo) {
     // Toggle speed timer allowence
-    this.speedTimerInMotion = !this.speedTimerInMotion;
+    this.speedTimerInMotion = true;
 
     // Incrementally increase or decrease player speed
     const incDecHeroSpeed = (speedType, speedChangedTo) => {
       // Loop speed and increment value
       const incDecIntervalMs = 100;
       const incDecValue = this.gameRules.heroSpeedIncrement;
+
+      console.log('IncDecHeroSpeed');
 
       // Show notification
       this.showGameNotification(speedType);
@@ -515,8 +518,10 @@ export default class extends Phaser.State {
 
       //  Create our Timer
       this.incDecTimer = this.game.time.create(false);
+      // Add to timers array
+      this.timerEvents.push(this.incDecTimer);
+      // Start it
       this.incDecTimer.start();
-
       //  Set a TimerEvent to occur
       this.incDecTimer.loop(incDecIntervalMs, updateHeroSpeed, this);
   }
@@ -563,6 +568,8 @@ export default class extends Phaser.State {
     // Handle the text update
     this.showHeroText(text, 400);
 
+    console.log(`${name} hit`);
+
     // Add bonus to total
     this.bonusPoints += bonusPoints;
   
@@ -600,56 +607,75 @@ export default class extends Phaser.State {
 
     this.removeGameNotification();
 
-    if (textToDisplay === 'fast') {
-      msgText = 'SPEED UP';
-      msgTextCol = this.overlay.textCol;
-      msgTextBg = this.overlay.bgCol;
-    } else if (textToDisplay === 'slow') {
-      msgText = 'SLOW DOWN';
-      msgTextCol = this.overlay.textCol2;
-      msgTextBg = this.overlay.error;
-    } else {
-      msgText = textToDisplay;
-      msgTextCol = this.overlay.textCol;
-      msgTextBg = this.overlay.bgCol;
-    }
+    console.log('showing game notification');
 
-    this.gameNotificationText = this.add.text(
-      0,
-      5,
-      msgText,
-      {
-        font: this.style.font,
-        fontSize: "14px",
-        fill: msgTextCol,
-        align: "center",
-        boundsAlignH: "center",
-        boundsAlignV: "middle"
+    // If it's not already showing...
+    if (!this.gameNotificationShowing) {
+      if (textToDisplay === 'fast') {
+        msgText = 'SPEED UP';
+        msgTextCol = this.overlay.textCol;
+        msgTextBg = this.overlay.bgCol;
+      } else if (textToDisplay === 'slow') {
+        msgText = 'SLOW DOWN';
+        msgTextCol = this.overlay.textCol2;
+        msgTextBg = this.overlay.error;
+      } else {
+        msgText = textToDisplay;
+        msgTextCol = this.overlay.textCol;
+        msgTextBg = this.overlay.bgCol;
       }
-    );
-    this.gameNotificationText.anchor.setTo(0.5); // set anchor to middle / center
 
-    this.gameNotificationTextBG = this.add.graphics(this.centerX, this.centerY);
-      this.gameNotificationTextBG.beginFill(msgTextBg, 1);
-      this.gameNotificationTextBG.drawCircle(0, 0, 100);
-      this.gameNotificationTextBG.x = this.centerX;
-      this.gameNotificationTextBG.y = this.centerY + 100;
-      this.gameNotificationTextBG.fixedToCamera = true;
-      this.gameNotificationTextBG.alpha = 0.95;
-      this.gameNotificationTextBG.anchor.set(0.5);
-    
-      this.gameNotificationTextBG.addChild(this.gameNotificationText);
+      this.gameNotificationText = this.add.text(
+        0,
+        5,
+        msgText,
+        {
+          font: this.style.font,
+          fontSize: "14px",
+          fill: msgTextCol,
+          align: "center",
+          boundsAlignH: "center",
+          boundsAlignV: "middle"
+        }
+      );
+      this.gameNotificationText.anchor.setTo(0.5); // set anchor to middle / center
 
-      this.add
-        .tween(this.gameNotificationTextBG.pivot)
-        .from({ x: 500 }, 500, Phaser.Easing.Elastic.Out, true);
+      this.gameNotificationTextBG = this.add.graphics(this.centerX, this.centerY);
+        this.gameNotificationTextBG.beginFill(msgTextBg, 1);
+        this.gameNotificationTextBG.drawCircle(0, 0, 100);
+        this.gameNotificationTextBG.x = this.centerX;
+        this.gameNotificationTextBG.y = this.centerY + 100;
+        this.gameNotificationTextBG.fixedToCamera = true;
+        this.gameNotificationTextBG.alpha = 0.95;
+        this.gameNotificationTextBG.anchor.set(0.5);
+      
+        this.gameNotificationTextBG.addChild(this.gameNotificationText);
+
+        this.add
+          .tween(this.gameNotificationTextBG.pivot)
+          .from({ x: 500 }, 500, Phaser.Easing.Elastic.Out, true);
+
+        // Set the flag
+        this.gameNotificationShowing = true;
+    }
   }
 
   removeGameNotification() {
-    // If it already exists, destroy it and create anew
-    if (this.gameNotificationTextBG) {
+    // If it already exists, destroy it 
+    if (this.gameNotificationShowing) {
+      // Destroy all timers in array via loop
+      for (let i=0; i<this.timerEvents.length; i+=1){
+        this.game.time.events.remove(this.timerEvents[i]);
+        console.log('removing timer');
+      }
+      this.speedTimerInMotion = false;
+      this.gameNotificationShowing = false;   
       const tweenOut = this.add.tween(this.gameNotificationTextBG.pivot).to({ x: -500 }, 500, Phaser.Easing.Elastic.Out, true);
-      tweenOut.onComplete.add(() => (this.gameNotificationTextBG.destroy()));
+      tweenOut.onComplete.add(() => {
+        this.gameNotificationTextBG.kill();
+        console.log('killed game notification');
+      });
+      
     }
   }
 
@@ -866,7 +892,7 @@ export default class extends Phaser.State {
     this.direction = null;
     this.gameInPlay = false;
     this.heroStart.inPosition = false;
-    this.speedTimerInMotion = !this.speedTimerInMotion;
+    this.speedTimerInMotion = false;
     this.badGuysMovement.velocity = 0;
     this.removeGameNotification();
 
