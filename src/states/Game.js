@@ -108,9 +108,10 @@ export default class extends Phaser.State {
   preload() {
     this.load.image("blocks", "assets/images/tiles.png");
     this.load.spritesheet("objects", "assets/images/objects.png", 25, 25);
+    this.load.spritesheet("tunnel", "assets/images/tunnel.png", 45, 45);
     this.load.tilemap(
       "map1",
-      "assets/data/otee-map-1.json",
+      "assets/data/otee-map-1.json", 
       null,
       Phaser.Tilemap.TILED_JSON
     );
@@ -135,10 +136,16 @@ export default class extends Phaser.State {
     // Allow objects to be touched
     this.objectsGroup = this.add.physicsGroup();
 
-    // See handleTileCollision
+    // See handleTileCollision - setTileIndexCallback(indexes, callback, callbackContext, layer)
     this.tileMap.setTileIndexCallback(2, this.handleTileCollision, this);
     this.tileMap.setTileIndexCallback(3, this.reverseHero, this);
     this.tileMap.setTileIndexCallback(4, this.handleCheckpoint, this);
+
+    // Create objects from tiles: createFromTiles(tiles, replacements, key, layer, group, properties)
+    this.tileMap.createFromTiles(2, null, "tunnel", this.mapLayer, this.tunnelGroup);
+
+    // Move above Hero 
+    this.tunnelGroup.z = 6
 
     // Collision
     this.tileMap.setCollisionByExclusion([2, 4]);
@@ -300,7 +307,6 @@ export default class extends Phaser.State {
     scoreBg.alpha = 0.95;
 
     // Draw heart
-
     let heart = this.add.graphics(this.centerX - 13.5, 4);
     heart.beginFill(0xee5b5b, 1);
     heart.moveTo(75, 40);
@@ -1438,6 +1444,12 @@ export default class extends Phaser.State {
     this.centerX = this.camera.width / 2;
     this.centerY = this.camera.height / 2;
 
+    this.tunnelGroup = this.add.group();
+    this.oneUpGroup = this.add.group();
+    this.bonus1Group = this.add.group();
+    this.bonus2Group = this.add.group();
+    this.heroGroup = this.add.group();
+
     this.wallBuilder();
     this.goalInfo = this.add.text(this.centerX, 100, "REACH THE CHECKPOINT", {
       font: this.style.font,
@@ -1448,13 +1460,7 @@ export default class extends Phaser.State {
       boundsAlignV: "middle"
     });
     this.goalInfo.anchor.setTo(0.5);
-    this.heroGroup = this.add.group();
     this.heroBuilder();
-    this.tunnelGroup = this.add.group();
-
-    this.oneUpGroup = this.add.group();
-    this.bonus1Group = this.add.group();
-    this.bonus2Group = this.add.group();
 
     this.gameTimeBuilder();
     this.smallWallBuilder();
@@ -1477,7 +1483,7 @@ export default class extends Phaser.State {
     // Count items
     this.objects.count =
       this.bonus1Group.children.length +
-      this.bonus1Group.children.length +
+      this.bonus2Group.children.length +
       this.oneUpGroup.children.length;
   }
 
@@ -1538,10 +1544,6 @@ export default class extends Phaser.State {
     ) {
       this.handleReset();
     }
-
-    // Handle z order
-    this.game.world.sendToBack(this.heroGroup);
-    this.game.world.bringToTop(this.tunnelGroup);
   }
 
   render() {
