@@ -66,7 +66,7 @@ export default class extends Phaser.State {
       y: 55,
       originalY: 55,
       inPosition: false,
-      lives: 3,
+      lives: 10,
       pivot: 6
     };
     this.badGuysMovement = {
@@ -612,6 +612,10 @@ export default class extends Phaser.State {
           boundsAlignV: "middle"
         }
       );
+
+      // Create a group
+      this.gameNotificationGroup = this.add.group();
+
       this.gameNotificationText.anchor.setTo(0.5); // set anchor to middle / center
 
       this.gameNotificationTextBG = this.add.graphics(this.centerX, this.centerY);
@@ -620,10 +624,14 @@ export default class extends Phaser.State {
         this.gameNotificationTextBG.x = this.centerX;
         this.gameNotificationTextBG.y = this.centerY + 100;
         this.gameNotificationTextBG.fixedToCamera = true;
-        this.gameNotificationTextBG.alpha = 0.95;
+        this.gameNotificationTextBG.alpha = 0.85;
         this.gameNotificationTextBG.anchor.set(0.5);
-      
+
+        // Add text to graphic
         this.gameNotificationTextBG.addChild(this.gameNotificationText);
+
+        // Add graphic & text to group
+        this.gameNotificationGroup.addChild(this.gameNotificationTextBG);
 
         this.add
           .tween(this.gameNotificationTextBG.pivot)
@@ -645,7 +653,7 @@ export default class extends Phaser.State {
       this.gameNotificationShowing = false;   
       const tweenOut = this.add.tween(this.gameNotificationTextBG.pivot).to({ x: -500 }, 500, Phaser.Easing.Elastic.Out, true);
       tweenOut.onComplete.add(() => {
-        this.gameNotificationTextBG.kill();
+        this.gameNotificationGroup.kill();
       });
       
     }
@@ -653,8 +661,9 @@ export default class extends Phaser.State {
 
   handleGameInPlay() {
     // if it bleeds we can kill it
-    if (this.startPanelGroup) {
+    if (this.startPanelGroup.alive) {
       this.startPanelGroup.kill();
+      //this.startInfo.destroy();
     }
 
     if (this.gameTimer.running !== true || this.gameTimer.paused !== true) {
@@ -667,8 +676,6 @@ export default class extends Phaser.State {
     this.moveHero();
     this.moveCamera();
     this.moveBadGuys();
-    // this.moveBadGuysLTR();
-    // this.moveBadGuysRTL();
 
     // // Collide the hero and the stars with the walls
     this.physics.arcade.collide(
@@ -754,10 +761,10 @@ export default class extends Phaser.State {
   }
 
   handleReset() {
-    if (this.endGamePanelGroup) this.endGamePanelGroup.kill();
-    if (this.endGameTextGroup) this.endGameTextGroup.kill();
-    if (this.restartPanelBG) this.restartPanelBG.kill();
-    if (this.resetPanelBG) this.resetPanelBG.kill();
+    if (this.endGamePanelGroup && this.endGamePanelGroup.alive) this.endGamePanelGroup.kill();
+    if (this.endGameTextGroup && this.endGameTextGroup.alive) this.endGameTextGroup.kill();
+    if (this.restartPanelBG && this.restartPanelBG.alive) this.restartPanelBG.kill();
+    if (this.resetPanelBG && this.resetPanelBG.alive) this.resetPanelBG.kill();
 
     this.trail.destroy();
 
@@ -773,7 +780,7 @@ export default class extends Phaser.State {
     // If it's game over...
     if (this.gameOver) {
       // Reset
-      this.heroStart.lives = 1; // TODO get rid of hard-value
+      this.heroStart.lives = 10; // TODO get rid of hard-value
       this.livesLeft.text = `${this.heroStart.lives}`;
       this.camera.y = 0;
       this.heroStart.x = 196; // TODO get rid of hard-value
@@ -891,14 +898,7 @@ export default class extends Phaser.State {
       this.resetPanelBG.scale.x = 1;
       this.resetPanelBG.scale.y = 1;
 
-      this.resetInfo = this.add.text(0, 5, "ENTER TO RESET", {
-        font: this.style.font,
-        fontSize: "17px",
-        fill: this.overlay.textCol,
-        align: "center",
-        boundsAlignH: "center",
-        boundsAlignV: "middle"
-      });
+      this.resetInfo = this.add.text(0, 5, "ENTER TO RESET", this.textOverlayStyle);
       this.resetInfo.anchor.setTo(0.5); // set anchor to middle / center
 
       this.resetPanelBG.addChild(this.resetInfo);
@@ -1147,6 +1147,7 @@ export default class extends Phaser.State {
   }
 
   startAgainInfo() {
+
     this.startPanel3BG = this.add.graphics(this.centerX, this.centerY);
     this.startPanel3BG.beginFill(this.overlay.bgCol3, 1);
     this.startPanel3BG.drawCircle(0, 0, 170);
@@ -1155,9 +1156,6 @@ export default class extends Phaser.State {
     this.startPanel3BG.world.y = this.centerY;
     this.startPanel3BG.fixedToCamera = true;
     this.startPanel3BG.anchor.set(0.5);
-    this.startPanel3BG.alpha = 0.95;
-    this.startPanel3BG.scale.x = 1;
-    this.startPanel3BG.scale.y = 1;
 
     this.startPanel2BG = this.add.graphics(this.centerX, this.centerY);
     this.startPanel2BG.beginFill(this.overlay.bgCol2, 1);
@@ -1167,9 +1165,6 @@ export default class extends Phaser.State {
     this.startPanel2BG.world.y = this.centerY;
     this.startPanel2BG.fixedToCamera = true;
     this.startPanel2BG.anchor.set(0.5);
-    this.startPanel2BG.alpha = 0.95;
-    this.startPanel2BG.scale.x = 1;
-    this.startPanel2BG.scale.y = 1;
 
     this.startPanelBG = this.add.graphics(this.centerX, this.centerY);
     this.startPanelBG.beginFill(this.overlay.bgCol, 1);
@@ -1178,18 +1173,10 @@ export default class extends Phaser.State {
     this.startPanelBG.world.y = this.centerY;
     this.startPanelBG.fixedToCamera = true;
     this.startPanelBG.anchor.set(0.5);
-    this.startPanelBG.alpha = 1;
-    this.startPanelBG.scale.x = 1;
-    this.startPanelBG.scale.y = 1;
 
-    this.startInfo = this.add.text(
-      this.centerX,
-      this.centerY + 5,
-      "SPACEBAR TO START",
-      this.textOverlayStyle
-    );
+    this.startInfo = this.add.text(0, 5, "SPACEBAR TO START", this.textOverlayStyle);
+
     this.startInfo.anchor.setTo(0.5); // set anchor to middle / center
-
     this.startPanelBG.addChild(this.startInfo);
 
     this.startPanelGroup = this.add.group();
@@ -1197,7 +1184,6 @@ export default class extends Phaser.State {
     this.startPanelGroup.add(this.startPanel3BG);
     this.startPanelGroup.add(this.startPanel2BG);
     this.startPanelGroup.add(this.startPanelBG);
-    this.startPanelGroup.add(this.startInfo);
 
     // Display Start Info
     this.add
@@ -1223,6 +1209,7 @@ export default class extends Phaser.State {
 
     startTween1.chain(startTween2, startTween3);
     startTween1.start();
+
   }
 
   // Create 1 Up items from map objects
@@ -1547,6 +1534,7 @@ export default class extends Phaser.State {
 
     this.game.world.bringToTop(this.tunnelGroup);
     this.game.world.bringToTop(this.scorePanel);    
+    if (this.gameNotificationGroup) this.game.world.bringToTop(this.gameNotificationGroup);
     if (this.startPanelGroup) this.game.world.bringToTop(this.startPanelGroup);
     if (this.restartPanelBG) this.game.world.bringToTop(this.restartPanelBG);
     if (this.resetPanelBG) this.game.world.bringToTop(this.resetPanelBG);
