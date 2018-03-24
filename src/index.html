@@ -2,13 +2,45 @@
 <html lang="en">
 
 <head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-116320759-1"></script>
+    <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'UA-116320759-1');
+    </script>
+
     <meta charset="UTF-8">
-    <title>OTEE game - HTML5 - Canvas - WebGL - Phaser</title>
+    <title>Otee: Dodge, Deceive, Don't Die. A free 2D endless-runner game.</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta name="description" content="Otee is a free 2D endless runner game built with HTML5 / Javascript / Phaser. You'll need a keyboard to navigate the map, dodge and outsmart your enemies and obstacles.">
     <meta name="HandheldFriendly" content="True">
-    <meta name="MobileOptimized" content="320">
+    <meta name="MobileOptimized" content="405">
     <meta http-equiv="cleartype" content="on">
+    <meta name="robots" content="index, follow">
     <meta name="format-detection" content="telephone=no">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Otee: Dodge, Deceive, Don't Die. A free 2D endless-runner game.">
+    <meta property="og:site_name" content="Otee.me">
+    <meta property="og:url" content="http://otee.me">
+    <meta property="og:image" content="http://otee.me/assets/images/og.png">
+    <meta property="og:desciption" content="Otee is a free 2D endless runner game built with HTML5 / Javascript / Phaser. You'll need a keyboard to navigate the map, dodge and outsmart your enemies and obstacles.">
+    <meta property="article:published_time" content="24/03/2018">
+    <meta property="article:author" content="http://ghosthorses.co.uk">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@nonbeliever">
+    <meta name="twitter:title" content="Otee: Dodge, Deceive, Don't Die. A free 2D endless-runner game.">
+    <meta name="twitter:description" content="Otee is a free 2D endless runner game built with HTML5 / Javascript / Phaser. You'll need a keyboard to navigate the map, dodge and outsmart your enemies and obstacles.">
+    <meta name="twitter:image" content="http://otee.me/assets/images/twitter-card.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="manifest" href="favicon/site.webmanifest">
+    <link rel="mask-icon" href="favicon/safari-pinned-tab.svg" color="#8777f9">
+    <meta name="msapplication-TileColor" content="#8777f9">
+    <meta name="theme-color" content="#ffffff">
     <style>
         html,
         body {
@@ -43,7 +75,7 @@
         }
         h2 {
             margin: 0;
-            padding: 2rem;
+            padding: 20px;
             font-size: 45px;
             font-weight: 900;
             line-height: 35px;
@@ -56,9 +88,27 @@
             font-family: 'Josefin Sans', sans-serif;
             letter-spacing: 3px;
             text-transform: uppercase;
-        } 
+        }
+        h3 {
+            font-size: 30px;
+            margin: 60px 30px;
+            text-align: center;
+        }
         p {
             font-size: 10px;
+        }
+        a,
+        a:link,
+        a:visited {
+            color: #ffd670;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        small {
+            font-size: 10px;
+            letter-spacing: 2px;
         }
         .inst {
             font-family: 'Josefin Sans', sans-serif;
@@ -76,9 +126,39 @@
             font-size: 20px;
             color: #ffd670;
         }
-        main {
-            background: rgba(0, 0, 0, 0.2);
+        .stand-out {
+            background: rgba(0, 0, 0, 0.1);
             border-top: 5px solid #FFD670;
+            left: 50%;
+            padding: 0;
+            position: absolute;
+            top: 0;
+            transform: translateX(-50%);
+        }
+        aside {
+            max-width: 200px;
+            text-align: center;
+        }
+        aside h4 {
+            background: rgba(0, 0, 0, 0.1);
+            color: #FFD670;
+            display: inline-block;
+            font-size: 13px;
+            letter-spacing: 4px;
+            margin: 0 auto;
+            padding: 10px;
+            text-align: center;
+            text-transform: uppercase;
+        }
+        aside p {
+            font-size: 15px;
+            line-height: 1.5;
+            font-family: 'Josefin Sans', sans-serif;
+        }
+        aside strong {
+            color: #FFD670;
+        }
+        section {
             padding: 20px;
         }
         .col {
@@ -86,6 +166,11 @@
             display: flex;
             flex-direction: column;
             flex: 1;
+            position: relative;
+            z-index: 1;
+        }
+        .col.center {
+            justify-content: center;
         }
         #game {
             box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
@@ -94,20 +179,95 @@
             width: 405px;
             z-index: 2;
         }
+        hr {
+            border: 0;
+            border-top: 1px dotted #FFD670;
+            background: transparent;
+            margin: 0;
+            padding: 0;
+        }
+        #version {
+            position: absolute;
+            bottom: 0;
+            right: 20px;
+
+        }
+        #version dl {
+            display: flex;
+            flex-direction: row;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        #version dt {
+            margin: 0 10px 0 0;
+        }
+        #version dd {
+            margin: 0;
+        }
+        #disclaimer {
+            background: #8777f9;
+            bottom: 0;
+            color: #fff;
+            display: flex;            
+            flex-direction: column;
+            justify-content: center;
+            left: 0;
+            line-height: 1.5;
+            padding: 40px;
+            position: fixed;
+            right: 0;
+            text-align: center;
+            top: 0;
+            z-index: 10;
+        }
+        #disclaimer p {
+            font-size: 5vw;
+        }
+        #disclaimer strong {
+            color: #FFD670;
+        }
+        @media screen and (min-width: 1060px) {
+            #disclaimer {
+                display: none;
+            }
+        }
     </style>
 </head>
 
 <body>
     <div id="wrapper">
         <h1>Otee</h1>
-        <div class="col"></div>
+        <div class="col center">
+                <main> 
+                    <section class="stand-out">
+                        <section>
+                            <h2><span>Welcome to </span>Otee</h2>
+                        </section>                    
+                        <hr />
+                        <section>
+                            <p class="inst">Use <span>← ↑ ↓ →</span> to MOVE</p>
+                        </section>
+                    </section>                    
+                </main>
+                <aside> 
+                    <h4>Polite Notice</h4>
+                    <p>This game is very much <strong>unfinished</strong> and is therefore <strong>buggy as hell.</strong></p>
+                    <small>Complaints to: <a href="https://twitter.com/nonbeliever" target="_blank" rel="noopener">@nonbeliever</a></small>
+                </aside>
+            </div>
         <div id="game"></div>
-        <div class="col">
-            <main>
-                <h2><span>Welcome to </span>Otee</h2>
-                <p class="inst">Use <span>← ↑ ↓ →</span> to MOVE</p>
-            </main>
+        <div class="col center">
+            <h3>Dodge, Deceive, Don't Die.</h3>            
         </div>
+    </div>
+    <div id="version">
+        <dl>
+            <dt>Version:</dt>
+            <dd>0000.000</dd>
+        </dl>
+    </div>
+    <div id="disclaimer">
+        <p>Sorry! To play <strong>Otee</strong> you'll need to use a device with a keyboard and a big ol' screen. (For now).</p>
     </div>
     <!-- uncomment the line bellow for cordova feature -->
     <!-- <script type="text/javascript" src="cordova.js"></script> -->

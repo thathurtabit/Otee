@@ -66,7 +66,7 @@ export default class extends Phaser.State {
       y: 55,
       originalY: 55,
       inPosition: false,
-      lives: 10,
+      lives: 1,
       pivot: 6
     };
     this.badGuysMovement = {
@@ -780,7 +780,7 @@ export default class extends Phaser.State {
     // If it's game over...
     if (this.gameOver) {
       // Reset
-      this.heroStart.lives = 10; // TODO get rid of hard-value
+      this.heroStart.lives = 1; // TODO get rid of hard-value
       this.livesLeft.text = `${this.heroStart.lives}`;
       this.camera.y = 0;
       this.heroStart.x = 196; // TODO get rid of hard-value
