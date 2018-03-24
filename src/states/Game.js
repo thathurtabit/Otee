@@ -108,7 +108,7 @@ export default class extends Phaser.State {
   preload() {
     this.load.image("blocks", "assets/images/tiles.png");
     this.load.spritesheet("objects", "assets/images/objects.png", 25, 25);
-    this.load.spritesheet("tunnel", "assets/images/tunnel.png", 45, 45);
+    this.load.image("tunnel", "assets/images/tunnel.png", 45, 45);
     this.load.tilemap(
       "map1",
       "assets/data/otee-map-1.json", 
@@ -145,7 +145,7 @@ export default class extends Phaser.State {
     this.tileMap.createFromTiles(2, null, "tunnel", this.mapLayer, this.tunnelGroup);
 
     // Move above Hero 
-    this.tunnelGroup.z = 6
+    this.tunnelGroup.z = 8000;
 
     // Collision
     this.tileMap.setCollisionByExclusion([2, 4]);
@@ -1544,6 +1544,14 @@ export default class extends Phaser.State {
     ) {
       this.handleReset();
     }
+
+    this.game.world.bringToTop(this.tunnelGroup);
+    this.game.world.bringToTop(this.scorePanel);    
+    if (this.startPanelGroup) this.game.world.bringToTop(this.startPanelGroup);
+    if (this.restartPanelBG) this.game.world.bringToTop(this.restartPanelBG);
+    if (this.resetPanelBG) this.game.world.bringToTop(this.resetPanelBG);
+    if (this.endGameTextGroup) this.game.world.bringToTop(this.endGameTextGroup);
+
   }
 
   render() {
