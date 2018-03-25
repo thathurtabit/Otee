@@ -66,7 +66,7 @@ export default class extends Phaser.State {
       y: 55,
       originalY: 55,
       inPosition: false,
-      lives: 1,
+      lives: 3,
       pivot: 6
     };
     this.badGuysMovement = {
@@ -237,14 +237,15 @@ export default class extends Phaser.State {
 
   handleCheckpoint(sprite, tile) {
     // When we hit the tile, do things only once...
-    if (tile.alpha === 1) {
+    const checkpointTile = tile;
+    if (checkpointTile.alpha === 1) {
       this.showHeroText("CHECKPOINT!", 1000);
     }
-    tile.alpha = 0.2;
+    checkpointTile.alpha = 0.2;
     this.mapLayer.dirty = true;
 
-    this.heroStart.x = tile.worldX + this.tile.width / 2 - this.heroSize / 2;
-    this.heroStart.y = tile.worldY + this.tile.height / 2 - this.heroSize / 2;
+    this.heroStart.x = checkpointTile.worldX + this.tile.width / 2 - this.heroSize / 2;
+    this.heroStart.y = checkpointTile.worldY + this.tile.height / 2 - this.heroSize / 2;
 
     // Add the SPECIAL touched tile to an array - reset only on GAME OVER
     this.specialTouchableTiles.push(tile);
@@ -252,8 +253,8 @@ export default class extends Phaser.State {
 
   // Store Hero History
   storeHeroHistory(xPos, yPos) {
-    let x = xPos + this.heroSize / 2 - 1;
-    let y = yPos + this.heroSize / 2 - 1;
+    const x = xPos + this.heroSize / 2 - 1;
+    const y = yPos + this.heroSize / 2 - 1;
 
     this.trail = this.add.graphics(0, 0);
     this.trail.beginFill(this.heroColor.trail, 1);
@@ -266,7 +267,7 @@ export default class extends Phaser.State {
 
   // Hero
   heroBuilder() {
-    let hero = this.add.graphics(0, 0);
+    const hero = this.add.graphics(0, 0);
     hero.beginFill(this.heroColor.current, 1);
     hero.drawCircle(this.heroSize, this.heroSize, this.heroSize * 2);
 
@@ -276,7 +277,7 @@ export default class extends Phaser.State {
     this.hero.height = this.heroSize;
     this.hero.addChild(hero);
 
-    let heroEye = this.add.graphics(0, 0);
+    const heroEye = this.add.graphics(0, 0);
     heroEye.beginFill("0xFFFFFF", 1);
     heroEye.drawCircle(this.heroSize, this.heroSize, this.heroSize / 2 + 2);
 
@@ -456,7 +457,7 @@ export default class extends Phaser.State {
 
   // Constantly move the camera
   moveCamera() {
-    // As long as the game is running and the hero has reaches a certain position...
+    // As long as the game is running and the hero has reached a certain position...
     if (this.gameInPlay && this.hero.y >= this.gameRules.triggerCameraHeight) {
       this.camera.y += this.gameRules.gameSpeed;
     }
@@ -518,20 +519,22 @@ export default class extends Phaser.State {
     let text;
     let heroSpeed = this.gameRules.heroSpeedCurrent;
     let bonusPoints = 0;
-    this.objects.collected += 1;
 
     switch (name) {
       case "bonus1":
         text = "+50 POINTS!";
-        bonusPoints = 50;
+        bonusPoints = 50;        
+        this.objects.collected += 1;
         break;
       case "bonus2":
         text = "+100 POINTS!";
         bonusPoints = 100;
+        this.objects.collected += 1;
         break;
       case "1up":
         text = "1 UP!";
         this.heroStart.lives += 1;
+        this.objects.collected += 1;
         break;
       case "fast":
         heroSpeed = 250;
@@ -565,14 +568,16 @@ export default class extends Phaser.State {
 
   // Generic handler for all hover text
   showHeroText(textToDisplay, lifespan) {
+    this.heroTextGroup = this.add.group();
     this.textInfo = this.add.text(
       this.hero.x + 8,
       this.hero.y - 10,
       textToDisplay,
       this.textStyle
-    );
+    );    
     this.textInfo.anchor.setTo(0.5); // set anchor to middle / center
     this.textInfo.lifespan = lifespan;
+    this.heroTextGroup.add(this.textInfo);    
   }
 
   // Generic handler for all hover text
@@ -663,7 +668,6 @@ export default class extends Phaser.State {
     // if it bleeds we can kill it
     if (this.startPanelGroup.alive) {
       this.startPanelGroup.kill();
-      //this.startInfo.destroy();
     }
 
     if (this.gameTimer.running !== true || this.gameTimer.paused !== true) {
@@ -745,6 +749,13 @@ export default class extends Phaser.State {
       this.handleLossOfLife,
       null,
       this
+    ); 
+    this.physics.arcade.overlap(
+      this.hero,
+      this.badGuyGroupUTD,
+      this.handleLossOfLife,
+      null,
+      this
     );
     this.physics.arcade.overlap(
       this.hero,
@@ -780,7 +791,7 @@ export default class extends Phaser.State {
     // If it's game over...
     if (this.gameOver) {
       // Reset
-      this.heroStart.lives = 1; // TODO get rid of hard-value
+      this.heroStart.lives = 3; // TODO get rid of hard-value
       this.livesLeft.text = `${this.heroStart.lives}`;
       this.camera.y = 0;
       this.heroStart.x = 196; // TODO get rid of hard-value
@@ -806,7 +817,7 @@ export default class extends Phaser.State {
     } else {
       this.hero.x = this.heroStart.x;
       this.hero.y = this.heroStart.y;
-      this.camera.y = this.heroStart.y - (this.camera.height / 2 - 300);
+      this.camera.y = this.heroStart.y - (this.camera.height / 2 - 100);
 
       this.score =
         Math.floor(this.hero.y + this.bonusPoints) - this.heroStart.originalY;
@@ -828,21 +839,12 @@ export default class extends Phaser.State {
     this.heroEye.pivot.x = 0;
     this.heroEye.pivot.y = 0;
 
-    // Move bad guys too
+    // Move bad guys too (start position)
     this.badGuyGroup.children.map(badguy => {
       badguy.body.velocity.x = 0;
       badguy.x = this.heroStart.x - 10;
     });
 
-    // Move bad guys too
-    this.badGuyGroupRTL.children.map(badguy => {
-      badguy.x = this.heroStart.x - 10;
-    });
-
-    // Move bad guys too
-    this.badGuyGroupLTR.children.map(badguy => {
-      badguy.x = this.heroStart.x - 10;
-    });
 
     // Tween hero in before starting...
     let tweenheroIn = this.add
@@ -1302,7 +1304,7 @@ export default class extends Phaser.State {
     );
   }
 
-  // Bad guy builder
+  // Bad guy builder (Follow Hero's Movement)
   badGuyBuilder() {
     this.badGuyGroup = this.add.physicsGroup();
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
@@ -1317,7 +1319,7 @@ export default class extends Phaser.State {
     );
   }
 
-  // Bad guy builder
+  // Bad guy builder (Right then Left)
   badGuyBuilderRTL() {
     this.badGuyGroupRTL = this.add.physicsGroup();
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
@@ -1339,7 +1341,7 @@ export default class extends Phaser.State {
     });
   }
 
-  // Bad guy builder
+  // Bad guy builder (Left then Right)
   badGuyBuilderLTR() {
     this.badGuyGroupLTR = this.add.physicsGroup();
     // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
@@ -1358,6 +1360,28 @@ export default class extends Phaser.State {
       badGuyMapped.body.enable = true;
       badGuyMapped.body.bounce.setTo(1,1); 
       badGuyMapped.body.velocity.x = -this.badGuysMovement.velocity;
+    });
+  }
+
+  // Bad guy builder (Up then Down)
+  badGuyBuilderUTD() {
+    this.badGuyGroupUTD = this.add.physicsGroup();
+    // name, gid, key, frame, exists, autoCull, group, CustomClass, adjustY
+    this.tileMap.createFromObjects(
+      this.objects.layer,
+      "badguy_utd",
+      this.objects.spritesheet,
+      6,
+      true,
+      false,
+      this.badGuyGroupUTD
+    );    
+    this.badGuyGroupUTD.children.map(badguy => {
+      const badGuyMapped = badguy;
+      badGuyMapped.body.collideWorldBounds = true;
+      badGuyMapped.body.enable = true;
+      badGuyMapped.body.bounce.setTo(1,1); 
+      badGuyMapped.body.velocity.y = -this.badGuysMovement.velocity;
     });
   }
 
@@ -1462,6 +1486,7 @@ export default class extends Phaser.State {
     this.badGuyBuilder();
     this.badGuyBuilderLTR();
     this.badGuyBuilderRTL();
+    this.badGuyBuilderUTD();
 
     this.scorePanelBuilder();
     this.updateScorePanel();
@@ -1503,6 +1528,14 @@ export default class extends Phaser.State {
       null,
       this
     );
+    // collide(object1, object2, collideCallback, processCallback, callbackContext) 
+    this.physics.arcade.collide(
+      this.badGuyGroupUTD,
+      this.mapLayer,
+      null,
+      null,
+      this
+    );
 
     // If we're not already playing, and not in the game over phase, and the hero is in position, and the spacebar is pressed... *phew*
     if (
@@ -1535,9 +1568,11 @@ export default class extends Phaser.State {
     this.game.world.bringToTop(this.tunnelGroup);
     this.game.world.bringToTop(this.scorePanel);    
     if (this.gameNotificationGroup) this.game.world.bringToTop(this.gameNotificationGroup);
+    if (this.heroTextGroup) this.game.world.bringToTop(this.heroTextGroup);    
     if (this.startPanelGroup) this.game.world.bringToTop(this.startPanelGroup);
     if (this.restartPanelBG) this.game.world.bringToTop(this.restartPanelBG);
-    if (this.resetPanelBG) this.game.world.bringToTop(this.resetPanelBG);
+    if (this.resetPanelBG) this.game.world.bringToTop(this.resetPanelBG); 
+    if (this.endGamePanelGroup) this.game.world.bringToTop(this.endGamePanelGroup);
     if (this.endGameTextGroup) this.game.world.bringToTop(this.endGameTextGroup);
 
   }
